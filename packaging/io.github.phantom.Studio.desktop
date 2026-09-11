@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Phantom Studio
+Comment=Lighting, key assignments and macros for the Phantom TKL keyboard
+Exec=phantom-studio
+Icon=io.github.phantom.Studio
+Terminal=false
+Categories=Settings;HardwareSettings;
+Keywords=keyboard;RGB;Phantom;TKL;
+StartupNotify=true

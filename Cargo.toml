@@ -1,0 +1,21 @@
+[package]
+name = "phantom-studio"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.89"
+description = "Native Linux control studio for the Phantom TKL keyboard"
+license = "GPL-3.0-or-later"
+
+[dependencies]
+gtk = { package = "gtk4", version = "0.10", features = ["v4_12"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+hidapi = { version = "2.6", default-features = false, features = ["linux-native-basic-udev"] }
+
+[profile.dev]
+debug = 0
+
+[profile.release]
+lto = "thin"
+strip = true

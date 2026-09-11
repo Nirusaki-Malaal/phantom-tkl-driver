@@ -1,0 +1,10 @@
+Phantom Studio is an independent Linux implementation and is not affiliated
+with the original keyboard software vendor.
+
+The Rust application and new application artwork are provided under
+GPL-3.0-or-later; see LICENSE. Dependencies retain their respective licenses.
+The original Windows executables and DLLs are not included or required.
+Reverse-engineering extracts under research/decompiled are evidence derived
+from the user's supplied binaries; this project's license does not relicense
+the original vendor's code. Device geometry and protocol facts were recovered
+from the supplied package and the connected keyboard.

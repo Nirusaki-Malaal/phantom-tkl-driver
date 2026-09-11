@@ -1,0 +1,46 @@
+@define-color accent #bca2ff;
+window { background: #101116; color: #eeedf5; }
+headerbar { background: #101116; box-shadow: none; border-bottom: 1px solid #24252e; min-height: 46px; }
+.sidebar { background: #15161d; border-right: 1px solid #282934; padding: 26px 16px; }
+.brand { font-size: 23px; font-weight: 800; letter-spacing: 4px; }
+.eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 2px; color: #aaa4bc; }
+.muted { color: #9999ac; }
+.subtle { color: #727287; font-size: 11px; }
+.page-title { font-size: 31px; font-weight: 800; letter-spacing: -1px; }
+.section-title { font-size: 16px; font-weight: 700; }
+.nav { background: transparent; border: none; box-shadow: none; color: #a5a4b7; padding: 13px 17px; border-radius: 10px; }
+.nav:checked { color: #ded1ff; background: #2a243b; }
+.nav:hover { background: #23232f; }
+.card { background: #1a1b24; border: 1px solid #2b2c38; border-radius: 16px; padding: 23px; }
+.keyboard-card { background: linear-gradient(140deg, #201d2e, #16181f 65%); border: 1px solid #33303f; border-radius: 19px; padding: 24px; }
+.pill { font-size: 10px; font-weight: 700; letter-spacing: 1px; background: #252333; color: #d0baff; border-radius: 20px; padding: 7px 12px; }
+.connected { color: #8cdbb5; background: #1b302b; }
+button { border-radius: 9px; border: 1px solid #353540; background: #262733; color: #efedf7; padding: 9px 15px; box-shadow: none; }
+button:hover { background: #353545; border-color: #747081; }
+button.primary { background: #bca2ff; color: #211537; border: none; font-weight: 750; padding: 12px 21px; }
+button.primary:hover { background: #cfbcff; }
+button:disabled { opacity: 0.4; }
+scale:disabled, dropdown:disabled, switch:disabled { opacity: 0.45; }
+button.swatch { padding: 0; min-width: 29px; min-height: 29px; border-radius: 30px; border: 3px solid #1a1b24; }
+button.swatch:checked { border-color: white; }
+entry, textview { background: #12131a; border: 1px solid #363542; border-radius: 8px; padding: 9px; color: #eeedf5; }
+textview text { background: #12131a; color: #e5d9ff; }
+dropdown button { background: #252631; border: 1px solid #3a3948; }
+scale trough { min-height: 5px; background: #363341; border-radius: 4px; }
+scale highlight { background: #bca2ff; border-radius: 4px; }
+scale slider { margin: 0; padding: 0; background: #e1d6ff; min-width: 15px; min-height: 15px; border: none; box-shadow: 0 0 0 4px alpha(#bca2ff, 0.12); }
+switch:checked { background: #a98aea; }
+switch slider { min-width: 20px; min-height: 20px; }
+separator { background: #2c2c37; }
+.statusbar { background: #15161d; border-top: 1px solid #2a2b35; padding: 12px 22px; }
+.status { font-size: 12px; color: #bbb7ce; }
+.macro-row { background: #20212b; border-radius: 8px; padding: 10px 14px; }
+scrolledwindow { background: transparent; }
+tooltip { background: #30303d; color: white; }
+
+/* Alpha applies only to the surfaces, never to text or child widgets. */
+window.frosted { background: rgba(16,17,22,0.76); }
+window.frosted headerbar { background: rgba(16,17,22,0.6); }
+window.frosted .sidebar, window.frosted .statusbar { background: rgba(21,22,29,0.62); }
+window.frosted .card { background: rgba(26,27,36,0.72); }
+window.frosted .keyboard-card { background: linear-gradient(140deg, rgba(32,29,46,0.76), rgba(22,24,31,0.68) 65%); }

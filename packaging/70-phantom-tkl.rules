@@ -1,0 +1,2 @@
+# Grant the active local desktop user access, without running the app as root.
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="320f", ATTRS{idProduct}=="505b", TAG+="uaccess"

@@ -1,0 +1,8 @@
+// Phantom Studio only. Requires niri 26.04 or newer.
+window-rule {
+    match app-id=r#"^io\.github\.phantom\.Studio$"#
+    draw-border-with-background false
+    background-effect {
+        blur true
+    }
+}
