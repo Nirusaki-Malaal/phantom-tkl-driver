@@ -4,7 +4,7 @@ These notes distinguish reconstructed behavior from physical verification. The L
 
 ## Inputs and method
 
-Source folder: `/mnt/files/Phantom TKL Software`.
+Source folder: `the user-supplied Windows package`.
 
 | Input | SHA-256 |
 |---|---|
@@ -14,9 +14,9 @@ Source folder: `/mnt/files/Phantom TKL Software`.
 | SDK/x86/vista/osConfLib.dll | `b3997b03c2f842386af172cb96c2c63af4e5a69dfe07693646e5c23764a52127` |
 | SDK/x64/vista/osConfLib.dll | `20c58530e75179529fc7af38141730cd77815251cb94f5dee296790a0d9ea3b6` |
 
-GhidraMCP runs at `http://127.0.0.1:8081/sse`. The supplied bridge needs a separate Ghidra backend. `tools/HeadlessBridge.java` provides a read-only backend on localhost:8080; `tools/ghidra_mcp.py` issues actual MCP calls through the SSE bridge. Files prefixed `mcp_` under `decompiled/` record returned decompilation. Address 00494700 lies within the function beginning at 00493c80. Other extracts came from an existing full Ghidra export whose executable hash matched the supplied input. DLL hashes were inventoried; this does not mean every DLL function has been reconstructed.
+GhidraMCP runs at `http://127.0.0.1:8081/sse`. The supplied bridge needs a separate Ghidra backend. `tools/HeadlessBridge.java` provides a read-only backend on localhost:8080; `tools/ghidra_mcp.py` issues actual MCP calls through the SSE bridge. Local files prefixed `mcp_` under `decompiled/` record returned decompilation. Raw exports and local capture files are intentionally excluded from Git; function addresses and the protocol fixture are retained for review. Address 00494700 lies within the function beginning at 00493c80. Other extracts came from an existing full Ghidra export whose executable hash matched the supplied input. DLL hashes were inventoried; this does not mean every DLL function has been reconstructed.
 
-The current persisted analysis project is `/mnt/files/phantom-ghidra-work/PhantomRecovered`. It was saved before starting the HTTP adapter, so restarting the adapter need not repeat analysis.
+Save the analysis project before starting the HTTP adapter so it can be reopened without repeating analysis.
 
 ## Device and framing
 
@@ -34,7 +34,7 @@ Use HID output reports and input replies, **not feature reports**. Each report i
 | 7 | Request zero / response status |
 | 8–63 | Payload, remaining bytes zero-padded |
 
-Replies echo the **request checksum**, even for reads whose response payload differs. Match report ID, command, length, offset and echoed checksum; reject status `fe` or `ff`, short replies and timeouts. See captured packets in `device-backup.json` and the Rust packet tests.
+Replies echo the **request checksum**, even for reads whose response payload differs. Match report ID, command, length, offset and echoed checksum; reject status `fe` or `ff`, short replies and timeouts. See captured packets in `../tests/fixtures/phantom-320f-505b.json` and the Rust packet tests.
 
 Transactions begin with command 01 and finish with 02. The original driver waits before finishing; the Linux implementation waits 10 ms. Transfers split into 56-byte chunks with increasing offsets. Relevant transport functions include 0047a340, 0047af70, 0047b180 and 0047cd70.
 
@@ -103,7 +103,7 @@ Macro source: 00493c80, event serializer 0044a8a0 and keyboard event handling 00
 - Regular keys: type 0a (down 8a). Modifiers: type 09 (down 89), with a modifier mask rather than a keyboard usage.
 - Total storage limit: 7168 bytes. Host validation rejects unbalanced presses/releases and oversized data.
 
-The GUI supports app-local recording and numeric event editing. Macro assignment repeat semantics and physical playback remain unverified. Windows program launching and Windows macro-file import are not implemented.
+The GUI supports app-local recording, numeric event editing, and desktop playback through Rust evdev/uinput. Desktop playback has countdown, repeat count, cancellation, and held-key cleanup. Macro assignment repeat semantics and physical playback remain unverified. Windows program launching and Windows macro-file import are not implemented.
 
 ## Validation and remaining coverage
 
@@ -120,6 +120,6 @@ Physical remapping, macro playback, every direction/preset, all ten custom slots
 
 ## Native blur
 
-The GTK window uses alpha only on background surfaces, retaining opaque text and controls. `packaging/niri-blur.kdl` requests compositor-native blur for the exact app ID. `tools/enable_niri_blur.py` validates the candidate niri configuration, saves a timestamped backup, and appends only the app rule. It was installed and validated on the user's niri 26.04 desktop. The Appearance switch restores an opaque window when disabled.
+The GTK window uses alpha only on background surfaces, retaining opaque text and controls. `packaging/niri-blur.kdl` requests compositor-native blur for the exact app ID. The installer validates the candidate niri configuration, saves a timestamped backup, and updates only its managed app rule. The rule opens the main window floating at a practical size. It was installed and validated on the user's niri 26.04 desktop. The Appearance switch restores an opaque window when disabled.
 
 Other compositors require their own blur support/configuration. This is not simulated CSS blur or a blurred screenshot. See [niri's native window-effects documentation](https://niri-wm.github.io/niri/Window-Effects.html).

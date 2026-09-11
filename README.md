@@ -1,84 +1,157 @@
 # Phantom Studio
 
-A native GTK 4 / Rust application for the **Phantom TKL, USB `320f:505b`**. Dark graphite surfaces, lavender accents, an interactive keyboard, and direct HID communication. No Wine, Windows runtime, or vendor DLL is required.
+A native Linux app for the **Phantom TKL keyboard (USB 320f:505b)**. Set lighting, paint individual keys, remap keys, record macros and play them in your favorite apps. Built with GTK 4 and Rust. No Wine or Windows software required.
 
-## Run
+## Install
 
-```sh
-./run.sh
-```
-
-The built executable is `target/release/phantom-studio`. To build yourself:
+Open a terminal and run:
 
 ```sh
-cargo build --release --locked
+git clone https://github.com/Nirusaki-Malaal/phantom-tkl-driver.git
+cd phantom-tkl-driver
+./install.sh
 ```
 
-Requires Rust **1.89 or newer**, GTK **4.12 or newer**, a C toolchain and pkg-config. Build validated with Rust 1.98 and GTK 4.22.4 on this machine. The executable dynamically links GTK and the usual Linux desktop libraries; it is not a universal static binary.
+Run the installer as your normal desktop user. Enter your sudo password when requested for hardware access and any missing system packages. The first build can take a few minutes.
 
-Arch: `sudo pacman -S --needed rust gtk4 base-devel pkgconf`
-
-Ubuntu 24.04+: `sudo apt install libgtk-4-dev build-essential pkg-config` plus a current Rust toolchain.
-
-## Features
-
-- Nineteen effects listed by the original keyboard configuration. Color, speed and direction controls follow the original effect capabilities; Surmount has four preset palettes.
-- Custom per-key RGB painting and ten hardware color slots.
-- Keyboard and media assignments, disabled keys, and onboard macro assignments.
-- Macro recording inside the app, editable event timing and a validated binary macro encoder.
-- Local profiles, duplication, rename, deletion, JSON import/export, and Windows keyboard-profile import.
-- Windows/Super lock, WASD/arrow swap, six-key rollover and four polling presets.
-- USB discovery by VID/PID **and vendor usage page**, background device I/O, bounded packets, response matching, backups and readback verification.
-- Frosted backgrounds with compositor-native blur on niri 26.04+, and an opaque appearance option.
-
-This is a functional Linux reimplementation, **not yet a verified complete replica**. See [feature coverage and validation](research/PROTOCOL.md). Onboard macro playback and physical remapping still need end-to-end keypress verification. Vendor cloud, firmware updating, and Windows program-launch hooks are not implemented. Audio/screen lighting and repeat-rate controls are hidden in the supplied Windows keyboard UI and are not exposed here.
-
-### Custom lighting
-
-Choose **Edit custom lighting**, choose a brush color, select and paint individual keys (or use **Paint all keys**), then **Apply lighting**. PrtSc is dimmed because the device exposes no programmable entry for it; it no longer prevents other keys from being painted. **Device → Read lighting from keyboard** reloads current stored colors. Custom lighting was confirmed working on the physical keyboard by the user on 2026-09-11.
-
-### Native blur
-
-On niri 26.04 or newer, run `python tools/enable_niri_blur.py` once. It validates the configuration and makes a timestamped backup before adding a rule for Phantom Studio only. This rule is already installed on the development machine. Toggle **Device → Appearance → Frosted background** to switch between translucent and opaque surfaces. Text remains opaque. Other compositors need their own native blur configuration; see [niri's window-effects documentation](https://niri-wm.github.io/niri/Window-Effects.html).
-
-## USB access
-
-If the app reports permission denied:
+When it finishes, open **Phantom Studio** from your application menu. You can also launch it with:
 
 ```sh
-sudo install -Dm644 packaging/70-phantom-tkl.rules /etc/udev/rules.d/70-phantom-tkl.rules
-sudo udevadm control --reload-rules
+~/.local/bin/phantom-studio
 ```
 
-Reconnect the keyboard afterward. The rule grants the active local user's session access. Do not run the GTK app with sudo. The driver opens only usage page `ff1c`, usage `92`; it never opens unrelated keyboards or mice.
+The installer:
 
-## Profiles and backups
+- Builds the app for your machine and installs it under `~/.local`.
+- Creates a working application-menu shortcut with an absolute executable path.
+- Repairs the older Phantom TKL shortcut, including existing pinned entries.
+- Sets up keyboard access and the virtual keyboard used for macro playback.
+- Configures a floating app window on niri, with native blur on niri 26.04 or newer.
+- Preserves your saved profiles when upgrading or reinstalling.
 
-Stored under `${XDG_CONFIG_HOME:-$HOME/.config}/phantom-studio/`. `PHANTOM_CONFIG_DIR` overrides this path for testing. Use **Save to profile** to persist editor changes. Selecting a profile refreshes its editors; it does not write to the device.
+### Requirements
 
-Lighting writes first save the current settings under `backups/`. Custom color writes also save the original slot bytes. Keymap application replaces the device keymap with the profile's assignments and the original default map for other keys. The recovered read command returns the default physical map, not a verified backup of previously remapped keys. Keep your existing Windows profile if you need to preserve those assignments.
+Use a Linux desktop with GTK **4.12 or newer**. Python 3 and Git are needed to run the commands above. The installer can install missing build packages using **apt, pacman, dnf or zypper**, and can install Rust through the official rustup installer when needed.
 
-Windows imports accept the supplied `Keyboard.json` structure. Unsupported launch or macro references produce an explicit error; they are not silently converted. Windows macro files are not imported by this version.
+The source installer is the recommended option across distributions and CPU architectures. It has been tested on Arch Linux with niri. The other package-manager paths are provided but have not yet been tested on their respective distributions. Distributions with older GTK versions need an upgrade first.
 
-## Diagnostics
+If your dependencies and device permissions are already configured:
 
 ```sh
-target/release/phantom-studio --probe
-target/release/phantom-studio --test-lighting
-target/release/phantom-studio --test-custom
-target/release/phantom-studio --restore-settings /path/to/snapshot.json
+./install.sh --no-deps --no-device-rules
 ```
 
-The two test commands temporarily modify settings/color data, read them back, then restore and verify the original bytes. `--restore-settings` restores only the 26-byte device settings block, not keymaps, macros or custom RGB slots.
+Use `./install.sh --help` for all options. On an unrecognized distribution, install Rust 1.89+, GTK 4.12 development files, a C compiler and pkg-config, then use `--no-deps`.
+
+## Start using your keyboard
+
+### Lighting
+
+1. Connect the keyboard and open **Lighting**.
+2. Choose an effect and adjust its available controls.
+3. Click **Apply lighting**.
+
+Effects with their own built-in colors disable the color picker. Controls for unsupported speed or direction settings are also disabled. Surmount offers four preset palettes.
+
+For individual key colors, click **Edit custom lighting**, choose a brush color, select a key and click **Paint selected key**. Use **Paint all keys** for a uniform layout, then click **Apply custom lighting** below the keyboard.
+
+PrtSc is dimmed because this keyboard exposes no programmable entry for that key. Fn lighting is supported, but the firmware reserves Fn from remapping.
+
+### Key assignments
+
+Open **Key assignments**, select a physical key, choose its new function and click **Assign selected key**. Click **Apply keymap** to send the assignments to the keyboard.
+
+Applying a keymap replaces the existing onboard assignments. Keys without an assignment in the selected profile return to their defaults.
+
+### Record and play macros
+
+1. Open **Macros** and click **Record keystrokes**.
+2. Type the sequence while the Phantom Studio window is focused, then click **Stop recording**.
+3. Give it a name and click **Save new macro**.
+4. Under **Play a macro**, select the saved macro and choose a repeat count and start delay.
+5. Click **Play selected macro**, then focus the destination app during the countdown.
+
+Playback sends real keyboard events to the focused app on Wayland or X11. **Stop playback** cancels the sequence and releases held keys. Closing Phantom Studio also stops playback. Recording is limited to this app's window.
+
+You can edit event timing in the macro editor. Each line is `down` or `up`, a USB key usage, and a delay in milliseconds before that event. For example, pressing and releasing A:
+
+```text
+down 4 0
+up 4 100
+```
+
+To assign a stored macro to a physical keyboard key, use **Key assignments → Macro number → Assign macro → Apply keymap**. Desktop playback and onboard playback are separate features. Onboard playback still needs broader physical verification.
+
+### Profiles and appearance
+
+Use **Save to profile** to keep lighting and key edits. The **Profiles** page supports copying, renaming, importing and exporting profiles. Selecting a profile does not immediately change the keyboard.
+
+**Device → Read lighting from keyboard** loads current settings and custom colors. **Device → Appearance → Frosted background** switches between translucent and opaque surfaces. Native blur depends on compositor support. Color dialogs are parented to the app for proper floating-dialog behavior.
+
+## Fix a launcher or connection problem
+
+If a menu shortcut does not open the app, or device access needs repairing:
+
+```sh
+cd phantom-tkl-driver
+./install.sh --repair
+```
+
+Then reopen **Phantom Studio** from the menu. The repaired legacy shortcut is kept as a hidden alias so existing pinned entries still work. Unrelated Wine shortcuts are left alone.
+
+If the keyboard is not detected, reconnect it after installation and press **Reconnect**. Check its USB ID with `lsusb`: this version targets `320f:505b`.
+
+If macro playback reports `/dev/uinput` access denied, run the repair command and retry. Hardware macros assigned to keys do not require the desktop playback feature.
+
+For startup problems, run `~/.local/bin/phantom-studio` in a terminal to see the error. You can try the Cairo renderer if your graphics driver has GTK rendering problems:
+
+```sh
+GSK_RENDERER=cairo ~/.local/bin/phantom-studio
+```
+
+Do not launch the GUI with sudo.
+
+## Update or uninstall
+
+Update from the project folder:
+
+```sh
+git pull --ff-only
+./install.sh
+```
+
+Remove the installed app and menu entries:
+
+```sh
+./install.sh --uninstall
+```
+
+Uninstalling keeps your profiles, configuration backups and system device-access rules.
+
+Profiles live in `~/.config/phantom-studio`, or the corresponding directory under `XDG_CONFIG_HOME`. Lighting changes create device backups in its `backups` folder. Export profiles from the app if you want to move them to another machine.
+
+## Supported features and current limits
+
+The app includes 19 lighting effects, custom key colors, keyboard/media assignments, macro recording and desktop playback, profile management, Windows-key lock, WASD/arrow swap, six-key rollover and polling-rate presets.
+
+Custom lighting has been confirmed working on the physical keyboard. Protocol readback, restoration, macro scheduling and cancellation have automated tests. Full parity with every function in the original Windows package is not claimed: firmware updates, vendor cloud services, Windows program-launch hooks and Windows macro-file import are not implemented. Some hardware behaviors, including onboard macro playback, still need broader testing.
 
 ## Development
 
 ```sh
-make check
-cargo test -- --include-ignored --test-threads=1  # includes GTK regression; needs a display
-make install  # installs the executable and desktop entry under ~/.local
+cargo test --locked
+cargo clippy --locked --all-targets -- -D warnings
+python3 -m unittest discover -s tests -p 'test_*.py'
 ```
 
-The application crate forbids unsafe Rust. GTK and HID libraries implement the native platform boundary. Python and Java under `tools/` are development-only reverse-engineering helpers, not application components.
+GTK regression tests need a desktop session:
 
-Analysis used the supplied executable through [GhidraMCP](https://github.com/LaurieWired/GhidraMCP), with a read-only headless Ghidra adapter because the bridge initially had no connected backend. Original inputs, hashes, function addresses, captured USB transactions and limitations are recorded in [research/PROTOCOL.md](research/PROTOCOL.md). Implementation references: [GTK Rust bindings](https://gtk-rs.org/gtk4-rs/stable/latest/docs/gtk4/) and [Linux hidraw documentation](https://cdn.kernel.org/doc/html/latest/hid/hidraw.html).
+```sh
+cargo test --locked ui::tests:: -- --ignored --test-threads=1
+```
+
+The optional virtual-device capture test needs access to the created event node and no competing input grab, such as a catch-all keyd configuration. It is excluded from the normal test suite.
+
+See [protocol and reverse-engineering notes](research/PROTOCOL.md) for GhidraMCP findings and hardware validation. Raw decompiler exports, local captures, generated binaries and personal settings are excluded from Git. A small protocol fixture is kept under `tests/fixtures`.
+
+Phantom Studio is independent of the keyboard vendor. Application code is licensed under [GPL-3.0-or-later](LICENSE).
