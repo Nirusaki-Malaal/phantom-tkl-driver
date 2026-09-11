@@ -185,8 +185,8 @@ fn build(app: &gtk::Application) {
     let window = gtk::ApplicationWindow::builder()
         .application(app)
         .title("Phantom Studio")
-        .default_width(1230)
-        .default_height(900)
+        .default_width(1100)
+        .default_height(780)
         .build();
     let frosted = std::fs::read(model::config_dir().join("appearance.json"))
         .ok()
@@ -802,7 +802,7 @@ fn lighting_page(
     let choose = button("Open color picker", false);
     {
         let (s, hex) = (s.clone(), hex.clone());
-        choose.connect_clicked(move |_| {
+        choose.connect_clicked(move |button| {
             let dialog = gtk::ColorDialog::builder()
                 .title("Choose your color")
                 .with_alpha(false)
@@ -816,7 +816,7 @@ fn lighting_page(
             );
             let hex = hex.clone();
             dialog.choose_rgba(
-                None::<&gtk::Window>,
+                button.root().and_downcast::<gtk::Window>().as_ref(),
                 Some(&rgba),
                 None::<&gtk::gio::Cancellable>,
                 move |result| {
@@ -1140,6 +1140,14 @@ fn keymap_page(s: &Shared, tx: &mpsc::Sender<Job>, status: &gtk::Label) -> gtk::
 }
 
 fn macros_page(s: &Shared, status: &gtk::Label, window: &gtk::ApplicationWindow) -> gtk::Box {
+    let player = Rc::new(RefCell::new(crate::playback::Player::default()));
+    {
+        let player = player.clone();
+        window.connect_close_request(move |_| {
+            player.borrow_mut().shutdown();
+            glib::Propagation::Proceed
+        });
+    }
     let page = column(24);
     page.append(&heading(
         "One key. More possibilities.",
@@ -1212,8 +1220,17 @@ fn macros_page(s: &Shared, status: &gtk::Label, window: &gtk::ApplicationWindow)
     }
     window.add_controller(capture);
     {
-        let (rec, ev, st) = (recording.clone(), events.clone(), status.clone());
+        let (rec, ev, st, player) = (
+            recording.clone(),
+            events.clone(),
+            status.clone(),
+            player.clone(),
+        );
         record.connect_clicked(move |b| {
+            if player.borrow().is_running() {
+                st.set_text("Stop playback before recording.");
+                return;
+            }
             if rec.borrow().is_some() {
                 *rec.borrow_mut() = None;
                 b.set_label("●  Record keystrokes");
@@ -1247,6 +1264,7 @@ fn macros_page(s: &Shared, status: &gtk::Label, window: &gtk::ApplicationWindow)
                 edit(&s, |old| *old = p);
                 s.borrow().library.save()?;
                 refresh_macros(&list, &current(&s));
+                s.borrow_mut().revision += 1;
                 Ok(())
             })();
             status_set(
@@ -1289,10 +1307,118 @@ fn macros_page(s: &Shared, status: &gtk::Label, window: &gtk::ApplicationWindow)
             p.macros.pop();
             edit(&s, |old| *old = p);
             refresh_macros(&list, &current(&s));
+            s.borrow_mut().revision += 1;
             status_set(&st, s.borrow().library.save(), "Macro removed.");
         });
     }
     saved.append(&delete);
+    let playback = card(
+        "Play a macro",
+        "Choose a saved macro, press Play, then focus the app that should receive the keystrokes during the countdown.",
+    );
+    let choices = gtk::DropDown::from_strings(&["Save a macro first"]);
+    let refresh_choices = {
+        let choices = choices.clone();
+        move |p: &Profile| {
+            let selected = choices
+                .selected()
+                .min(p.macros.len().saturating_sub(1) as u32);
+            let names: Vec<_> = p.macros.iter().map(|m| m.name.as_str()).collect();
+            choices.set_model(Some(&gtk::StringList::new(if names.is_empty() {
+                &["Save a macro first"]
+            } else {
+                &names
+            })));
+            choices.set_selected(selected);
+            choices.set_sensitive(!names.is_empty());
+        }
+    };
+    refresh_choices(&current(s));
+    on_profile_change(s, &choices, refresh_choices);
+    playback.append(&choices);
+    let timing = row(12);
+    let repeats = gtk::SpinButton::with_range(1., 100., 1.);
+    let countdown = gtk::SpinButton::with_range(1., 10., 1.);
+    countdown.set_value(3.);
+    timing.append(&label("Repeat", "muted"));
+    timing.append(&repeats);
+    timing.append(&label("Start delay (seconds)", "muted"));
+    timing.append(&countdown);
+    playback.append(&timing);
+    let playback_status = label(
+        "Ready. Playback works on Wayland and X11 through a virtual keyboard.",
+        "muted",
+    );
+    playback_status.set_wrap(true);
+    playback.append(&playback_status);
+    let actions = row(10);
+    let play = button("Play selected macro", true);
+    let stop = button("Stop playback", false);
+    {
+        let player = player.clone();
+        stop.connect_clicked(move |_| player.borrow().stop());
+    }
+    {
+        let (s, player, st, recording) = (
+            s.clone(),
+            player.clone(),
+            playback_status.clone(),
+            recording.clone(),
+        );
+        play.connect_clicked(move |_| {
+            if recording.borrow().is_some() {
+                st.set_text("Stop recording before playback.");
+                return;
+            }
+            let Some(mac) = current(&s).macros.get(choices.selected() as usize).cloned() else {
+                st.set_text("Save a macro first, then select it here.");
+                return;
+            };
+            match player.borrow_mut().start(
+                mac,
+                repeats.value_as_int() as u32,
+                countdown.value_as_int() as u32,
+            ) {
+                Err(e) => st.set_text(&format!("{e:#}")),
+                Ok(rx) => {
+                    st.set_text("Preparing playback…");
+                    let st = st.clone();
+                    glib::timeout_add_local(Duration::from_millis(40), move || {
+                        loop {
+                            match rx.try_recv() {
+                                Ok(crate::playback::Progress::Countdown(n)) => {
+                                    st.set_text(&format!(
+                                        "Starting in {n} seconds. Focus the destination app now."
+                                    ))
+                                }
+                                Ok(crate::playback::Progress::Playing(n, total)) => {
+                                    st.set_text(&format!("Playing repeat {n} of {total}…"))
+                                }
+                                Ok(crate::playback::Progress::Finished(result)) => {
+                                    st.set_text(&match result {
+                                        Ok(true) => "Playback finished.".into(),
+                                        Ok(false) => "Playback stopped. Held keys released.".into(),
+                                        Err(e) => e,
+                                    });
+                                    return glib::ControlFlow::Break;
+                                }
+                                Err(mpsc::TryRecvError::Empty) => {
+                                    return glib::ControlFlow::Continue;
+                                }
+                                Err(mpsc::TryRecvError::Disconnected) => {
+                                    return glib::ControlFlow::Break;
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+        });
+    }
+    actions.append(&play);
+    actions.append(&stop);
+    playback.append(&actions);
+    page.append(&playback);
     page.append(&saved);
     page
 }
@@ -1680,7 +1806,8 @@ mod tests {
             library: Library::default(),
             selected: None,
             snapshot: Some(
-                serde_json::from_str(include_str!("../tests/fixtures/phantom-320f-505b.json")).unwrap(),
+                serde_json::from_str(include_str!("../tests/fixtures/phantom-320f-505b.json"))
+                    .unwrap(),
             ),
             busy: false,
             revision: 0,

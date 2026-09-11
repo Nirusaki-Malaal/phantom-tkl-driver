@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 mod device;
 mod model;
+mod playback;
 mod protocol;
 mod ui;
 
