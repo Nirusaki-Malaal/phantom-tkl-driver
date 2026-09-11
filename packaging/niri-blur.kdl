@@ -1,6 +1,8 @@
-// Phantom Studio only. Requires niri 26.04 or newer.
 window-rule {
     match app-id=r#"^io\.github\.phantom\.Studio$"#
+    open-floating true
+    default-column-width { fixed 1100; }
+    default-window-height { fixed 780; }
     draw-border-with-background false
     background-effect {
         blur true
