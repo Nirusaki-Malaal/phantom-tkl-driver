@@ -198,8 +198,6 @@ impl Keyboard {
             &before,
         )?;
         let mut settings = before.settings.clone();
-        // This edition uses hardware settings bank zero; profiles live on the host.
-        // 004948e0 receives the bank separately from the selected effect.
         settings[0] = 0;
         settings[1] = p.lighting.mode;
         settings[2] = p.lighting.brightness;
@@ -222,8 +220,6 @@ impl Keyboard {
                 )?;
                 for key in model::layout() {
                     if let Some(color) = p.colors.get(&key.id) {
-                        // Older profiles included PrtSc, which has no programmable
-                        // entry on this device. It must not abort the whole painting.
                         let Some(led) = before.led_index(&key) else {
                             continue;
                         };
@@ -323,7 +319,6 @@ impl Keyboard {
         let mut profile = state.profile();
         profile.lighting.mode = 20;
         profile.lighting.custom_slot = 0;
-        // Include the formerly unsupported PrtSc entry to reproduce old profiles.
         for key in model::layout() {
             profile.colors.insert(key.id, [161, 115, 255]);
         }

@@ -38,7 +38,6 @@ separator { background: #2c2c37; }
 scrolledwindow { background: transparent; }
 tooltip { background: #30303d; color: white; }
 
-/* Alpha applies only to the surfaces, never to text or child widgets. */
 window.frosted { background: rgba(16,17,22,0.76); }
 window.frosted headerbar { background: rgba(16,17,22,0.6); }
 window.frosted .sidebar, window.frosted .statusbar { background: rgba(21,22,29,0.62); }

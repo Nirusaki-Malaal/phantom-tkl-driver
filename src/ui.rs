@@ -358,7 +358,6 @@ fn build(app: &gtk::Application) {
         });
     }
     window.present();
-    // Reproducible visual QA without a screenshot utility or desktop capture permissions.
     if let Ok(path) = std::env::var("PHANTOM_SCREENSHOT") {
         let w = window.clone();
         glib::timeout_add_local_once(Duration::from_secs(3), move || {
@@ -1850,7 +1849,6 @@ mod tests {
             panic!("Expected lighting job")
         };
         assert_eq!(p.colors.len(), 86);
-        // Offline editing must not reintroduce the unavailable key either.
         s.borrow_mut().snapshot = None;
         find_button("Discard staged painting").emit_clicked();
         find_button("Paint all keys").emit_clicked();

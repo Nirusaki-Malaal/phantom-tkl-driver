@@ -46,7 +46,6 @@ impl Default for Lighting {
         }
     }
 }
-// Firmware effect IDs are distinct from the original UI's selection index.
 pub const EFFECTS: &[(u8, &str)] = &[
     (1, "Corrugated"),
     (2, "Cloud"),
@@ -69,7 +68,6 @@ pub const EFFECTS: &[(u8, &str)] = &[
     (20, "Custom"),
 ];
 
-/// Recovered from the Windows lighting controls at 004181f0.
 #[derive(Clone, Copy, Debug)]
 pub struct EffectControls {
     pub color: bool,
@@ -211,7 +209,6 @@ pub fn encode_macros(macros: &[Macro]) -> Result<Vec<u8>> {
                 );
             }
             out[offset..offset + 2].copy_from_slice(&event.delay_ms.to_le_bytes());
-            // Keyboard events use Type 10; modifiers use Type 9 and a bit mask.
             let modifier = (0xe0..=0xe7).contains(&event.usage);
             out[offset + 2] = (if modifier { 9 } else { 10 }) | if event.down { 0x80 } else { 0 };
             out[offset + 3] = if modifier {

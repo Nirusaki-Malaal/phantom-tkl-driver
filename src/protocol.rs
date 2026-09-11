@@ -1,4 +1,3 @@
-//! Evision protocol recovered from the supplied executable. See research/PROTOCOL.md.
 use anyhow::{Result, ensure};
 pub const REPORT_SIZE: usize = 64;
 pub const PAYLOAD: usize = 56;
@@ -33,7 +32,6 @@ pub fn validate_reply(tx: &[u8; 64], rx: &[u8]) -> Result<()> {
         tx[3],
         rx[7]
     );
-    // This firmware echoes the request checksum, not a checksum over the reply payload.
     ensure!(
         rx[1..3] == tx[1..3],
         "Reply checksum does not echo the request"
