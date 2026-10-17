@@ -36,7 +36,7 @@ Pre-built desktop bundles are also available in [Releases](https://github.com/Ni
 
 ## AI usage disclosure
 
-Reverse engineering and development were AI-assisted. Code, protocol behavior and platform support still require tests and hardware verification; see the [validation boundaries](docs/DOCUMENTATION.md#validation-boundaries).
+Reverse engineering and development were AI-assisted using **GPT-6.1 Sol (medium effort)** and **Gemini Flash 3.8 (high effort)**. Code, protocol behavior and platform support still require tests and hardware verification; see the [validation boundaries](docs/DOCUMENTATION.md#validation-boundaries).
 
 ## License
 

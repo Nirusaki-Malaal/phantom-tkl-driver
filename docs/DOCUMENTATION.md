@@ -216,4 +216,4 @@ Firmware flashing, vendor cloud services, Windows application-launch hooks and W
 
 ## License and attribution
 
-Application code and artwork use [GPL-3.0-or-later](../LICENSE). Dependencies retain their licenses. The vendor's Windows executables and DLLs are not distributed or required. See [NOTICE](../NOTICE). Development and reverse engineering were AI-assisted; published support claims are limited to the checks described above.
+Application code and artwork use [GPL-3.0-or-later](../LICENSE). Dependencies retain their licenses. The vendor's Windows executables and DLLs are not distributed or required. See [NOTICE](../NOTICE). Development and reverse engineering were AI-assisted using **GPT-6.1 Sol (medium effort)** and **Gemini Flash 3.8 (high effort)**. Published support claims are limited to the checks described above.

@@ -42,3 +42,7 @@ Choose `phantom-studio-0.2.0-macos-aarch64.tar.gz` for Apple Silicon or `phantom
 These are unsigned GTK executables with external Homebrew library dependencies. Hardware control is unverified on macOS. Background recording and desktop macro playback require Linux. Compilation and package smoke tests do not establish full hardware compatibility; onboard macro playback also needs broader verification.
 
 See [documentation](https://github.com/Nirusaki-Malaal/phantom-tkl-driver/blob/v0.2.0/docs/DOCUMENTATION.md) for device access, profile migration, troubleshooting and validation boundaries. Existing profiles are preserved when reinstalling.
+
+## AI usage disclosure
+
+Reverse engineering and development were AI-assisted using **GPT-6.1 Sol (medium effort)** and **Gemini Flash 3.8 (high effort)**.
