@@ -4,6 +4,8 @@ Phantom Studio V0.2.0 brings a compact black-and-white desktop interface, animat
 
 ## Included in V0.2.0
 
+- **Universal Installer**: One `curl | sh` command detects Linux/macOS and x86_64/ARM64, builds locally and sets up platform-appropriate integration.
+
 - **Desktop Interface**: Collapsible sidebar, compact tiled niri window, clean header and monochrome surfaces.
 - **Lighting Previews**: Animated previews for all 19 effects, driven by GTK's display frame clock and responsive to lighting settings.
 - **Macro Library**: Individual playback, editing and deletion, unique names, Save as New, sequence summaries and automatic key-release cleanup.
@@ -11,6 +13,14 @@ Phantom Studio V0.2.0 brings a compact black-and-white desktop interface, animat
 - **Super-Key Controls**: Recording-only key capture, device lock-state synchronization and an explicit unlock action.
 - **Desktop Builds**: Reusable Rust core and native Linux x86_64/ARM64 plus macOS Apple Silicon/Intel build jobs.
 - **Automated Releases**: Formatting, Clippy, Rust and Python tests, extracted-bundle smoke checks, build metadata and SHA-256 checksums.
+
+## Universal source installer
+
+Run without sudo on Linux or macOS (Homebrew required on macOS):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Nirusaki-Malaal/phantom-tkl-driver/main/bootstrap.sh | sh
+```
 
 ## Install on Linux
 
@@ -27,7 +37,7 @@ Use the matching ARM64 filename/directory on ARM64. Run the installer without su
 
 ## Experimental macOS builds
 
-Choose `phantom-studio-0.2.0-macos-aarch64.tar.gz` for Apple Silicon or `phantom-studio-0.2.0-macos-x86_64.tar.gz` for Intel. Install GTK4 with `brew install gtk4`, verify the matching SHA-256 digest, extract the archive and run `./phantom-studio` inside it. The Linux installer does not run on macOS.
+Choose `phantom-studio-0.2.0-macos-aarch64.tar.gz` for Apple Silicon or `phantom-studio-0.2.0-macos-x86_64.tar.gz` for Intel. Install GTK4 with `brew install gtk4`, verify the matching SHA-256 digest, extract the archive and run `./phantom-studio` inside it. The installer installs the macOS executable under `~/.local/bin` and skips Linux menu/device setup.
 
 These are unsigned GTK executables with external Homebrew library dependencies. Hardware control is unverified on macOS. Background recording and desktop macro playback require Linux. Compilation and package smoke tests do not establish full hardware compatibility; onboard macro playback also needs broader verification.
 

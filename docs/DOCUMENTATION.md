@@ -13,6 +13,27 @@ ARM64 Linux builds run on native ARM64 CI runners. A successful build establishe
 
 ## Installation
 
+### Universal online installer
+
+Run this from your desktop terminal without sudo:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Nirusaki-Malaal/phantom-tkl-driver/main/bootstrap.sh | sh
+```
+
+The POSIX shell bootstrap detects Linux/macOS and x86_64/ARM64, downloads the current source into a temporary directory and delegates to the Python installer. It builds natively instead of guessing whether a pre-built archive matches your system libraries. The temporary source is removed afterward. Homebrew must already be installed on macOS; Linux dependency setup supports apt, pacman, dnf and zypper. Other Linux systems can supply dependencies manually and use `--no-deps`. Unsupported operating systems or CPU architectures fail before downloading.
+
+Options work through `sh -s --`:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Nirusaki-Malaal/phantom-tkl-driver/main/bootstrap.sh | sh -s -- --dry-run
+curl -fsSL https://raw.githubusercontent.com/Nirusaki-Malaal/phantom-tkl-driver/main/bootstrap.sh | sh -s -- --yes
+curl -fsSL https://raw.githubusercontent.com/Nirusaki-Malaal/phantom-tkl-driver/main/bootstrap.sh | sh -s -- --no-desktop-rules
+curl -fsSL https://raw.githubusercontent.com/Nirusaki-Malaal/phantom-tkl-driver/main/bootstrap.sh | sh -s -- --uninstall
+```
+
+The installer reconnects confirmation prompts to the controlling terminal when invoked through a pipe. Without a terminal, use `--yes` for dependency/Rust setup and arrange noninteractive sudo access where required. Profiles are preserved on upgrades and uninstall. For a fixed source revision, clone/check out that revision and use `./install.sh` locally.
+
 ### Source installation on Linux
 
 ```sh
@@ -61,12 +82,12 @@ cd phantom-studio-0.2.0-macos-aarch64
 ./phantom-studio
 ```
 
-The Linux installer does not run on macOS. These are unsigned command-line GTK executables, not notarized application bundles. They depend on the Homebrew runtime libraries used by their runner. Do not assume broad macOS deployment compatibility. To build locally:
+The shared installer also supports macOS and installs the executable under the selected prefix; Linux menu, niri and udev setup is skipped. These are unsigned command-line GTK executables, not notarized application bundles. They depend on the Homebrew runtime libraries used by their runner. Do not assume broad macOS deployment compatibility. To build locally:
 
 ```sh
 brew install gtk4 pkg-config
-cargo build --release --locked
-./target/release/phantom-studio
+./install.sh
+~/.local/bin/phantom-studio
 ```
 
 ### niri integration
@@ -174,7 +195,7 @@ The ignored virtual-keyboard capture test requires access to its newly created i
 
 `crates/phantom-core` contains reusable model, protocol and lighting-effect code. The desktop app also retains its existing modules; this release does not claim a complete migration to the library.
 
-CI runs formatting, Clippy, Rust tests and Python installer/package tests. Native runners build Linux x86_64/ARM64 and macOS Apple Silicon/Intel. Each bundle includes the executable, installer/support files, documentation, license and `BUILD_INFO.json`. The packager extracts and smoke-tests the bundled executable's `--help` path on the build host. This is not a GUI or hardware test.
+Release tooling and its tests require Python 3.12 or newer. CI runs formatting, Clippy, Rust tests and Python installer/bootstrap/package tests. Native runners build Linux x86_64/ARM64 and macOS Apple Silicon/Intel. Each bundle includes the executable, installer/support files, documentation, license and `BUILD_INFO.json`. The packager extracts and smoke-tests the bundled executable's `--help` path on the build host. This is not a GUI or hardware test.
 
 To build and package on the matching host:
 

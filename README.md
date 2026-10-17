@@ -9,17 +9,21 @@
 
 ## Install on Linux
 
-Open a terminal and run this **without sudo**:
+Open a terminal and paste this **without sudo**:
 
 ```sh
-git clone https://github.com/Nirusaki-Malaal/phantom-tkl-driver.git
-cd phantom-tkl-driver
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/Nirusaki-Malaal/phantom-tkl-driver/main/bootstrap.sh | sh
 ```
 
-The installer builds the app, installs your application-menu shortcut and sets up keyboard and macro playback permissions. It asks for your password when system setup needs it. Open **Phantom Studio** from your application menu when it finishes.
+The universal source installer detects Linux or macOS and x86_64 or ARM64, downloads the source and builds for your machine. On Linux it installs your application-menu shortcut and keyboard/macro playback rules. It asks for your password when system setup needs it. Open **Phantom Studio** from your application menu when it finishes.
 
-Pre-built desktop bundles are available in [Releases](https://github.com/Nirusaki-Malaal/phantom-tkl-driver/releases). GTK **4.12 or newer** is required. [Binary installation, special setups and uninstalling](docs/DOCUMENTATION.md#installation).
+## Install on macOS (experimental)
+
+Install [Homebrew](https://brew.sh) first, then run the same command above. The installer builds with GTK4 and installs `~/.local/bin/phantom-studio`; launch that command from a terminal. Background recording and desktop macro playback require Linux.
+
+GTK **4.12 or newer** is required. Linux dependency setup supports apt, pacman, dnf and zypper. To accept dependency installation automatically, use `curl -fsSL URL | sh -s -- --yes` with the URL above. To inspect the plan, pass `--dry-run` instead.
+
+Pre-built desktop bundles are also available in [Releases](https://github.com/Nirusaki-Malaal/phantom-tkl-driver/releases). [Binary/source installation, installer options and uninstalling](docs/DOCUMENTATION.md#installation).
 
 ## Features
 
