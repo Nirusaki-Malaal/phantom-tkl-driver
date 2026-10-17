@@ -6,8 +6,9 @@ build:
 run:
 	cargo run --locked
 check:
-	cargo fmt --check
-	cargo test --locked
-	cargo clippy --locked --all-targets -- -D warnings
+	cargo fmt --all -- --check
+	cargo test --workspace --locked
+	cargo clippy --workspace --locked --all-targets -- -D warnings
+	python3 -m unittest discover -s tests -p 'test_*.py'
 install:
 	./install.sh --prefix "$(PREFIX)"

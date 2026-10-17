@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  push:
+    tags: ['v[0-9]*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  checks-and-builds:
+    uses: ./.github/workflows/ci.yml
+  publish:
+    name: Publish checked desktop bundles
+    needs: checks-and-builds
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify tag matches both package versions
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: python3 tools/package_release.py --check-version --tag "$RELEASE_TAG"
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+      - name: Verify asset set and generate checksums
+        working-directory: release-assets
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          from pathlib import Path
+          import tomllib
+          version = tomllib.loads(Path('../Cargo.toml').read_text())['package']['version']
+          expected = {f'phantom-studio-{version}-{platform}.tar.gz' for platform in
+                      ('linux-x86_64', 'linux-aarch64', 'macos-aarch64', 'macos-x86_64')}
+          actual = {p.name for p in Path('.').iterdir()}
+          if actual != expected:
+              raise SystemExit(f'Unexpected release assets: {actual ^ expected}')
+          Path('SHA256SUMS').write_text(''.join(
+              f'{hashlib.sha256(Path(name).read_bytes()).hexdigest()}  {name}\n'
+              for name in sorted(expected)))
+          PY
+      - name: Publish release with authored notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$RELEASE_TAG" release-assets/*.tar.gz release-assets/SHA256SUMS \
+            --verify-tag --title "Phantom Studio V${RELEASE_TAG#v} - Linux and macOS" \
+            --notes-file docs/RELEASE_NOTES.md
