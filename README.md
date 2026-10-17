@@ -5,19 +5,11 @@
 ## Screenshots
 
 <p align="center">
-  <img src="docs/screenshots/lighting.png" alt="Phantom Studio - RGB Lighting Editor" width="90%" />
+  <img src="docs/screenshots/lighting.png" alt="RGB Lighting Editor" width="32.8%" />
+  <img src="docs/screenshots/macros.png" alt="Macro Editor" width="32.8%" />
+  <img src="docs/screenshots/profiles.png" alt="Profile Library" width="32.8%" />
 </p>
-<p align="center"><em>Real-time 19-effect RGB lighting editor with interactive canvas preview</em></p>
-
-<p align="center">
-  <img src="docs/screenshots/macros.png" alt="Phantom Studio - Macro Editor" width="90%" />
-</p>
-<p align="center"><em>Streamlined macro editor with global background recording and virtual keyboard testing</em></p>
-
-<p align="center">
-  <img src="docs/screenshots/profiles.png" alt="Phantom Studio - Profile Library" width="90%" />
-</p>
-<p align="center"><em>Profile management and import/export with collapsible navigation sidebar</em></p>
+<p align="center"><em>From left to right: 19-effect RGB lighting editor, macro recorder & virtual playback tester, profile manager with collapsible sidebar</em></p>
 
 ## Supported Platforms
 
