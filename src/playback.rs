@@ -58,7 +58,7 @@ impl Player {
         }
         self.shutdown();
         let (cancel_tx, cancel_rx) = mpsc::channel();
-        let (tx, rx) = mpsc::channel();
+        let (tx, rx) = mpsc::channel::<Progress>();
         self.cancel = Some(cancel_tx);
         self.running.store(true, Ordering::Release);
         #[cfg(target_os = "linux")]
@@ -95,7 +95,7 @@ impl Player {
         }
         #[cfg(not(target_os = "linux"))]
         {
-            let _ = (mac, repeats, countdown, tx, cancel_rx);
+            let _ = (mac, repeats, countdown, tx, rx, cancel_rx);
             self.running.store(false, Ordering::Release);
             bail!("Macro playback on desktop requires Linux uinput");
         }
