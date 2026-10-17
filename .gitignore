@@ -1,8 +1,7 @@
 /target/
 /dist/
 /.ghidra/
-/research/*
-!/research/PROTOCOL.md
+/research/
 __pycache__/
 *.py[cod]
 /.venv/
