@@ -556,13 +556,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "phantom-core"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "phantom-studio"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "evdev",
  "gtk4",
  "hidapi",
+ "phantom-core",
  "serde",
  "serde_json",
 ]

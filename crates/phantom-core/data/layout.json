@@ -1,0 +1,785 @@
+[
+  {
+    "id": 0,
+    "label": "Esc",
+    "x": 0,
+    "y": 0,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097193
+  },
+  {
+    "id": 1,
+    "label": "F1",
+    "x": 96.0,
+    "y": 0,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097210
+  },
+  {
+    "id": 2,
+    "label": "F2",
+    "x": 144.0,
+    "y": 0,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097211
+  },
+  {
+    "id": 3,
+    "label": "F3",
+    "x": 192.0,
+    "y": 0,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097212
+  },
+  {
+    "id": 4,
+    "label": "F4",
+    "x": 240.0,
+    "y": 0,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097213
+  },
+  {
+    "id": 5,
+    "label": "F5",
+    "x": 312.0,
+    "y": 0,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097214
+  },
+  {
+    "id": 6,
+    "label": "F6",
+    "x": 360.0,
+    "y": 0,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097215
+  },
+  {
+    "id": 7,
+    "label": "F7",
+    "x": 408.0,
+    "y": 0,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097216
+  },
+  {
+    "id": 8,
+    "label": "F8",
+    "x": 456.0,
+    "y": 0,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097217
+  },
+  {
+    "id": 9,
+    "label": "F9",
+    "x": 528.0,
+    "y": 0,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097218
+  },
+  {
+    "id": 10,
+    "label": "F10",
+    "x": 576.0,
+    "y": 0,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097219
+  },
+  {
+    "id": 11,
+    "label": "F11",
+    "x": 624.0,
+    "y": 0,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097220
+  },
+  {
+    "id": 12,
+    "label": "F12",
+    "x": 672.0,
+    "y": 0,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097221
+  },
+  {
+    "id": 13,
+    "label": "PrtSc",
+    "x": 744.0,
+    "y": 0,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097222
+  },
+  {
+    "id": 14,
+    "label": "ScrLk",
+    "x": 792.0,
+    "y": 0,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097223
+  },
+  {
+    "id": 15,
+    "label": "Pause",
+    "x": 840.0,
+    "y": 0,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097224
+  },
+  {
+    "id": 21,
+    "label": "`",
+    "x": 0,
+    "y": 65,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097205
+  },
+  {
+    "id": 22,
+    "label": "1",
+    "x": 48,
+    "y": 65,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097182
+  },
+  {
+    "id": 23,
+    "label": "2",
+    "x": 96,
+    "y": 65,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097183
+  },
+  {
+    "id": 24,
+    "label": "3",
+    "x": 144,
+    "y": 65,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097184
+  },
+  {
+    "id": 25,
+    "label": "4",
+    "x": 192,
+    "y": 65,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097185
+  },
+  {
+    "id": 26,
+    "label": "5",
+    "x": 240,
+    "y": 65,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097186
+  },
+  {
+    "id": 27,
+    "label": "6",
+    "x": 288,
+    "y": 65,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097187
+  },
+  {
+    "id": 28,
+    "label": "7",
+    "x": 336,
+    "y": 65,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097188
+  },
+  {
+    "id": 29,
+    "label": "8",
+    "x": 384,
+    "y": 65,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097189
+  },
+  {
+    "id": 30,
+    "label": "9",
+    "x": 432,
+    "y": 65,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097190
+  },
+  {
+    "id": 31,
+    "label": "0",
+    "x": 480,
+    "y": 65,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097191
+  },
+  {
+    "id": 32,
+    "label": "\u2212",
+    "x": 528,
+    "y": 65,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097197
+  },
+  {
+    "id": 33,
+    "label": "=",
+    "x": 576,
+    "y": 65,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097198
+  },
+  {
+    "id": 34,
+    "label": "Backspace",
+    "x": 624,
+    "y": 65,
+    "width": 91,
+    "height": 43,
+    "assignment": 2097194
+  },
+  {
+    "id": 42,
+    "label": "Tab",
+    "x": 0,
+    "y": 113,
+    "width": 67.0,
+    "height": 43,
+    "assignment": 2097195
+  },
+  {
+    "id": 43,
+    "label": "Q",
+    "x": 72.0,
+    "y": 113,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097172
+  },
+  {
+    "id": 44,
+    "label": "W",
+    "x": 120.0,
+    "y": 113,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097178
+  },
+  {
+    "id": 45,
+    "label": "E",
+    "x": 168.0,
+    "y": 113,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097160
+  },
+  {
+    "id": 46,
+    "label": "R",
+    "x": 216.0,
+    "y": 113,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097173
+  },
+  {
+    "id": 47,
+    "label": "T",
+    "x": 264.0,
+    "y": 113,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097175
+  },
+  {
+    "id": 48,
+    "label": "Y",
+    "x": 312.0,
+    "y": 113,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097180
+  },
+  {
+    "id": 49,
+    "label": "U",
+    "x": 360.0,
+    "y": 113,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097176
+  },
+  {
+    "id": 50,
+    "label": "I",
+    "x": 408.0,
+    "y": 113,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097164
+  },
+  {
+    "id": 51,
+    "label": "O",
+    "x": 456.0,
+    "y": 113,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097170
+  },
+  {
+    "id": 52,
+    "label": "P",
+    "x": 504.0,
+    "y": 113,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097171
+  },
+  {
+    "id": 53,
+    "label": "[",
+    "x": 552.0,
+    "y": 113,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097199
+  },
+  {
+    "id": 54,
+    "label": "]",
+    "x": 600.0,
+    "y": 113,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097200
+  },
+  {
+    "id": 55,
+    "label": "\\",
+    "x": 648.0,
+    "y": 113,
+    "width": 67.0,
+    "height": 43,
+    "assignment": 2097201
+  },
+  {
+    "id": 63,
+    "label": "Caps",
+    "x": 0,
+    "y": 161,
+    "width": 79.0,
+    "height": 43,
+    "assignment": 2097209
+  },
+  {
+    "id": 64,
+    "label": "A",
+    "x": 84.0,
+    "y": 161,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097156
+  },
+  {
+    "id": 65,
+    "label": "S",
+    "x": 132.0,
+    "y": 161,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097174
+  },
+  {
+    "id": 66,
+    "label": "D",
+    "x": 180.0,
+    "y": 161,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097159
+  },
+  {
+    "id": 67,
+    "label": "F",
+    "x": 228.0,
+    "y": 161,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097161
+  },
+  {
+    "id": 68,
+    "label": "G",
+    "x": 276.0,
+    "y": 161,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097162
+  },
+  {
+    "id": 69,
+    "label": "H",
+    "x": 324.0,
+    "y": 161,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097163
+  },
+  {
+    "id": 70,
+    "label": "J",
+    "x": 372.0,
+    "y": 161,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097165
+  },
+  {
+    "id": 71,
+    "label": "K",
+    "x": 420.0,
+    "y": 161,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097166
+  },
+  {
+    "id": 72,
+    "label": "L",
+    "x": 468.0,
+    "y": 161,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097167
+  },
+  {
+    "id": 73,
+    "label": ";",
+    "x": 516.0,
+    "y": 161,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097203
+  },
+  {
+    "id": 74,
+    "label": "'",
+    "x": 564.0,
+    "y": 161,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097204
+  },
+  {
+    "id": 75,
+    "label": "Enter",
+    "x": 612.0,
+    "y": 161,
+    "width": 103.0,
+    "height": 43,
+    "assignment": 2097192
+  },
+  {
+    "id": 84,
+    "label": "Shift",
+    "x": 0,
+    "y": 209,
+    "width": 103.0,
+    "height": 43,
+    "assignment": 2097664
+  },
+  {
+    "id": 85,
+    "label": "Z",
+    "x": 108.0,
+    "y": 209,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097181
+  },
+  {
+    "id": 86,
+    "label": "X",
+    "x": 156.0,
+    "y": 209,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097179
+  },
+  {
+    "id": 87,
+    "label": "C",
+    "x": 204.0,
+    "y": 209,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097158
+  },
+  {
+    "id": 88,
+    "label": "V",
+    "x": 252.0,
+    "y": 209,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097177
+  },
+  {
+    "id": 89,
+    "label": "B",
+    "x": 300.0,
+    "y": 209,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097157
+  },
+  {
+    "id": 90,
+    "label": "N",
+    "x": 348.0,
+    "y": 209,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097169
+  },
+  {
+    "id": 91,
+    "label": "M",
+    "x": 396.0,
+    "y": 209,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097168
+  },
+  {
+    "id": 92,
+    "label": ",",
+    "x": 444.0,
+    "y": 209,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097206
+  },
+  {
+    "id": 93,
+    "label": ".",
+    "x": 492.0,
+    "y": 209,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097207
+  },
+  {
+    "id": 94,
+    "label": "/",
+    "x": 540.0,
+    "y": 209,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097208
+  },
+  {
+    "id": 95,
+    "label": "Shift",
+    "x": 588.0,
+    "y": 209,
+    "width": 127.0,
+    "height": 43,
+    "assignment": 2105344
+  },
+  {
+    "id": 105,
+    "label": "Ctrl",
+    "x": 0,
+    "y": 257,
+    "width": 55.0,
+    "height": 43,
+    "assignment": 2097408
+  },
+  {
+    "id": 106,
+    "label": "Super",
+    "x": 60.0,
+    "y": 257,
+    "width": 55.0,
+    "height": 43,
+    "assignment": 2099200
+  },
+  {
+    "id": 107,
+    "label": "Alt",
+    "x": 120.0,
+    "y": 257,
+    "width": 55.0,
+    "height": 43,
+    "assignment": 2098176
+  },
+  {
+    "id": 108,
+    "label": "Space",
+    "x": 180.0,
+    "y": 257,
+    "width": 295.0,
+    "height": 43,
+    "assignment": 2097196
+  },
+  {
+    "id": 109,
+    "label": "Alt",
+    "x": 480.0,
+    "y": 257,
+    "width": 55.0,
+    "height": 43,
+    "assignment": 2113536
+  },
+  {
+    "id": 110,
+    "label": "Fn",
+    "x": 540.0,
+    "y": 257,
+    "width": 55.0,
+    "height": 43,
+    "assignment": 10486016
+  },
+  {
+    "id": 111,
+    "label": "Menu",
+    "x": 600.0,
+    "y": 257,
+    "width": 55.0,
+    "height": 43,
+    "assignment": 2097253
+  },
+  {
+    "id": 112,
+    "label": "Ctrl",
+    "x": 660.0,
+    "y": 257,
+    "width": 55.0,
+    "height": 43,
+    "assignment": 2101248
+  },
+  {
+    "id": 35,
+    "label": "Ins",
+    "x": 744.0,
+    "y": 65,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097225
+  },
+  {
+    "id": 36,
+    "label": "Home",
+    "x": 792.0,
+    "y": 65,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097226
+  },
+  {
+    "id": 37,
+    "label": "PgUp",
+    "x": 840.0,
+    "y": 65,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097227
+  },
+  {
+    "id": 56,
+    "label": "Del",
+    "x": 744.0,
+    "y": 113,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097228
+  },
+  {
+    "id": 57,
+    "label": "End",
+    "x": 792.0,
+    "y": 113,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097229
+  },
+  {
+    "id": 58,
+    "label": "PgDn",
+    "x": 840.0,
+    "y": 113,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097230
+  },
+  {
+    "id": 113,
+    "label": "\u2190",
+    "x": 744.0,
+    "y": 257,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097232
+  },
+  {
+    "id": 114,
+    "label": "\u2193",
+    "x": 792.0,
+    "y": 257,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097233
+  },
+  {
+    "id": 115,
+    "label": "\u2192",
+    "x": 840.0,
+    "y": 257,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097231
+  },
+  {
+    "id": 96,
+    "label": "\u2191",
+    "x": 792.0,
+    "y": 209,
+    "width": 43,
+    "height": 43,
+    "assignment": 2097234
+  }
+]
