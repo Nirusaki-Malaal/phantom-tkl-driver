@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build, install, repair or remove Phantom Studio using standard Linux tools."""
+"""Build, install, repair or remove Phantom Studio on Linux or macOS."""
 import argparse
 import os
 from pathlib import Path
@@ -132,37 +132,50 @@ def install_desktop(prefix, data_home, config_home, configure=True):
 def dependencies(allow_install, assume_yes):
     ready = shutil.which("cc") and shutil.which("pkg-config") and subprocess.run(
         ["pkg-config", "--atleast-version=4.12", "gtk4"], capture_output=True).returncode == 0
+    if sys.platform == "linux" and ready:
+        ready = subprocess.run(["pkg-config", "--exists", "libudev"], capture_output=True).returncode == 0
     if not ready:
         if not allow_install:
-            raise RuntimeError("Install GTK 4.12+ development files, a C compiler and pkg-config, then retry")
-        managers = [
-            ("apt-get", ["install", "-y", "libgtk-4-dev", "build-essential", "pkg-config", "curl", "desktop-file-utils"]),
-            ("pacman", ["-S", "--needed", "--noconfirm", "gtk4", "base-devel", "pkgconf", "curl", "desktop-file-utils"]),
-            ("dnf", ["install", "-y", "gtk4-devel", "gcc", "pkgconf-pkg-config", "curl", "desktop-file-utils"]),
-            ("zypper", ["--non-interactive", "install", "gtk4-devel", "gcc", "pkg-config", "curl", "desktop-file-utils"]),
-        ]
-        selected = next(((m, args) for m, args in managers if shutil.which(m)), None)
-        if selected is None:
-            raise RuntimeError("Unsupported package manager. Install GTK 4.12+ development files and use --no-deps")
-        manager, args = selected
-        print("Required packages:", " ".join([manager] + args))
-        if not assume_yes and input("Install these packages? [Y/n] ").strip().lower() not in ("", "y", "yes"):
-            raise RuntimeError("Dependency installation cancelled")
-        if manager == "apt-get":
-            run(["sudo", manager, "update"])
-        run(["sudo", manager] + args)
+            raise RuntimeError("Install GTK 4.12+ development files, a C compiler, pkg-config and Linux libudev development files if applicable, then retry")
+        if sys.platform == "darwin":
+            if not shutil.which("brew"):
+                raise RuntimeError("Install Homebrew from https://brew.sh, then retry")
+            if not assume_yes and input("Install GTK4 and pkg-config with Homebrew? [Y/n] ").strip().lower() not in ("", "y", "yes"):
+                raise RuntimeError("Dependency installation cancelled")
+            run(["brew", "install", "gtk4", "pkg-config"])
+        else:
+            managers = [
+                ("apt-get", ["install", "-y", "libgtk-4-dev", "libudev-dev", "build-essential", "pkg-config", "curl", "desktop-file-utils"]),
+                ("pacman", ["-S", "--needed", "--noconfirm", "gtk4", "base-devel", "pkgconf", "curl", "desktop-file-utils"]),
+                ("dnf", ["install", "-y", "gtk4-devel", "systemd-devel", "gcc", "pkgconf-pkg-config", "curl", "desktop-file-utils"]),
+                ("zypper", ["--non-interactive", "install", "gtk4-devel", "libudev-devel", "gcc", "pkg-config", "curl", "desktop-file-utils"]),
+            ]
+            selected = next(((m, args) for m, args in managers if shutil.which(m)), None)
+            if selected is None:
+                raise RuntimeError("Unsupported package manager. Install GTK 4.12+ development files and use --no-deps")
+            manager, args = selected
+            print("Required packages:", " ".join([manager] + args))
+            if not assume_yes and input("Install these packages? [Y/n] ").strip().lower() not in ("", "y", "yes"):
+                raise RuntimeError("Dependency installation cancelled")
+            if manager == "apt-get":
+                run(["sudo", manager, "update"])
+            run(["sudo", manager] + args)
     run(["pkg-config", "--atleast-version=4.12", "gtk4"])
+    if sys.platform == "linux":
+        run(["pkg-config", "--exists", "libudev"])
     cargo_home = Path(os.environ.get("CARGO_HOME", Path.home() / ".cargo"))
     env = os.environ.copy()
-    env["PATH"] = str(cargo_home / "bin") + os.pathsep + env.get("PATH", "")
+    # Respect a working distro toolchain before trying a user rustup install.
+    env["PATH"] = env.get("PATH", "") + os.pathsep + str(cargo_home / "bin")
     rustc = shutil.which("rustc", path=env["PATH"])
-    rust_version = run([rustc, "--version"], capture_output=True, text=True).stdout if rustc else ""
+    rust_version = subprocess.run([rustc, "--version"], capture_output=True, text=True).stdout if rustc else ""
     match = re.search(r"rustc (\d+)\.(\d+)", rust_version)
     if not match or tuple(map(int, match.groups())) < (1, 89):
         if not allow_install:
             raise RuntimeError("Rust 1.89+ is required. Install/update Rust at https://rustup.rs and retry")
         if not assume_yes and input("Install/update Rust using the official rustup installer? [Y/n] ").strip().lower() not in ("", "y", "yes"):
             raise RuntimeError("Rust installation cancelled")
+        env["PATH"] = str(cargo_home / "bin") + os.pathsep + env["PATH"]
         with tempfile.TemporaryDirectory(prefix="phantom-rustup-") as tmp:
             installer = Path(tmp) / "rustup-init.sh"
             with urllib.request.urlopen("https://sh.rustup.rs", timeout=60) as response:
@@ -195,8 +208,8 @@ def main():
     parser.add_argument("--uninstall", action="store_true", help="remove the user installation; keep profiles")
     parser.add_argument("--prefix", type=Path, default=Path.home() / ".local")
     args = parser.parse_args()
-    if sys.platform != "linux":
-        parser.error("Phantom Studio requires Linux")
+    if sys.platform not in ("linux", "darwin"):
+        parser.error("Phantom Studio requires Linux or macOS")
     if os.geteuid() == 0:
         parser.error("Run as your normal desktop user. The installer uses sudo only for system setup")
     prefix = args.prefix.expanduser().resolve()
@@ -227,15 +240,19 @@ def main():
         os.replace(temp, binary)
     elif not binary.is_file():
         raise RuntimeError("No existing installation found. Run ./install.sh without --repair first")
-    install_desktop(prefix, data_home, config_home, not args.no_desktop_rules)
-    if not args.no_device_rules:
-        device_rules()
-    print(f"\nInstalled! Open Phantom Studio in your application menu.\nTerminal: {binary}\nProfiles are kept when reinstalling or upgrading.")
+    if sys.platform == "linux":
+        install_desktop(prefix, data_home, config_home, not args.no_desktop_rules)
+        if not args.no_device_rules:
+            device_rules()
+        print("\nInstalled! Open Phantom Studio in your application menu.")
+    else:
+        print("\nInstalled experimental macOS executable (GTK4/Homebrew runtime required).")
+    print(f"Terminal: {binary}\nProfiles are kept when reinstalling or upgrading.")
 
 
 if __name__ == "__main__":
     try:
         main()
-    except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
+    except (OSError, RuntimeError, EOFError, subprocess.CalledProcessError) as error:
         print(f"Installation stopped: {error}", file=sys.stderr)
         sys.exit(1)

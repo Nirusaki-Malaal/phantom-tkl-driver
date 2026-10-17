@@ -2,6 +2,7 @@ import importlib.util
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("installer", ROOT / "tools/install.py")
@@ -48,6 +49,20 @@ class InstallerTests(unittest.TestCase):
             self.assertTrue(list((config / "phantom-studio/backups").glob("*.desktop")))
             entry = data / "applications/io.github.phantom.Studio.desktop"
             self.assertTrue(entry.is_file())
+
+    def test_macos_repair_skips_linux_integration(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prefix = Path(tmp)
+            (prefix / "bin").mkdir()
+            (prefix / "bin/phantom-studio").touch()
+            with mock.patch.object(installer.sys, "platform", "darwin"), \
+                 mock.patch.object(installer.sys, "argv", ["install.py", "--repair", "--prefix", str(prefix)]), \
+                 mock.patch.object(installer.os, "geteuid", return_value=1000), \
+                 mock.patch.object(installer, "install_desktop") as desktop, \
+                 mock.patch.object(installer, "device_rules") as rules:
+                installer.main()
+                desktop.assert_not_called()
+                rules.assert_not_called()
 
 
 if __name__ == "__main__":

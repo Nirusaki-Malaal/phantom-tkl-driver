@@ -25,7 +25,7 @@ class ReleaseTests(unittest.TestCase):
             with tarfile.open(archive) as tar:
                 files = tar.getnames()
                 prefix = f'phantom-studio-{release.project_version()}-linux-x86_64'
-                for name in ('phantom-studio', 'install.sh', 'tools/install.py',
+                for name in ('phantom-studio', 'install.sh', 'bootstrap.sh', 'tools/install.py',
                              'docs/DOCUMENTATION.md', 'LICENSE', 'BUILD_INFO.json',
                              'packaging/70-phantom-tkl.rules'):
                     self.assertIn(f'{prefix}/{name}', files)

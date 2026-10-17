@@ -44,7 +44,7 @@ def package(binary, target, output, tag=None):
         stage.mkdir()
         shutil.copy2(binary, stage / 'phantom-studio')
         (stage / 'phantom-studio').chmod(0o755)
-        for item in ('README.md', 'LICENSE', 'NOTICE', 'install.sh', 'docs', 'packaging'):
+        for item in ('README.md', 'LICENSE', 'NOTICE', 'install.sh', 'bootstrap.sh', 'docs', 'packaging'):
             source = ROOT / item
             if source.is_dir():
                 shutil.copytree(source, stage / item)
