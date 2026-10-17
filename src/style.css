@@ -1,45 +1,375 @@
-@define-color accent #bca2ff;
-window { background: #101116; color: #eeedf5; }
-headerbar { background: #101116; box-shadow: none; border-bottom: 1px solid #24252e; min-height: 46px; }
-.sidebar { background: #15161d; border-right: 1px solid #282934; padding: 26px 16px; }
-.brand { font-size: 23px; font-weight: 800; letter-spacing: 4px; }
-.eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 2px; color: #aaa4bc; }
-.muted { color: #9999ac; }
-.subtle { color: #727287; font-size: 11px; }
-.page-title { font-size: 31px; font-weight: 800; letter-spacing: -1px; }
-.section-title { font-size: 16px; font-weight: 700; }
-.nav { background: transparent; border: none; box-shadow: none; color: #a5a4b7; padding: 13px 17px; border-radius: 10px; }
-.nav:checked { color: #ded1ff; background: #2a243b; }
-.nav:hover { background: #23232f; }
-.card { background: #1a1b24; border: 1px solid #2b2c38; border-radius: 16px; padding: 23px; }
-.keyboard-card { background: linear-gradient(140deg, #201d2e, #16181f 65%); border: 1px solid #33303f; border-radius: 19px; padding: 24px; }
-.pill { font-size: 10px; font-weight: 700; letter-spacing: 1px; background: #252333; color: #d0baff; border-radius: 20px; padding: 7px 12px; }
-.connected { color: #8cdbb5; background: #1b302b; }
-button { border-radius: 9px; border: 1px solid #353540; background: #262733; color: #efedf7; padding: 9px 15px; box-shadow: none; }
-button:hover { background: #353545; border-color: #747081; }
-button.primary { background: #bca2ff; color: #211537; border: none; font-weight: 750; padding: 12px 21px; }
-button.primary:hover { background: #cfbcff; }
-button:disabled { opacity: 0.4; }
-scale:disabled, dropdown:disabled, switch:disabled { opacity: 0.45; }
-button.swatch { padding: 0; min-width: 29px; min-height: 29px; border-radius: 30px; border: 3px solid #1a1b24; }
-button.swatch:checked { border-color: white; }
-entry, textview { background: #12131a; border: 1px solid #363542; border-radius: 8px; padding: 9px; color: #eeedf5; }
-textview text { background: #12131a; color: #e5d9ff; }
-dropdown button { background: #252631; border: 1px solid #3a3948; }
-scale trough { min-height: 5px; background: #363341; border-radius: 4px; }
-scale highlight { background: #bca2ff; border-radius: 4px; }
-scale slider { margin: 0; padding: 0; background: #e1d6ff; min-width: 15px; min-height: 15px; border: none; box-shadow: 0 0 0 4px alpha(#bca2ff, 0.12); }
-switch:checked { background: #a98aea; }
-switch slider { min-width: 20px; min-height: 20px; }
-separator { background: #2c2c37; }
-.statusbar { background: #15161d; border-top: 1px solid #2a2b35; padding: 12px 22px; }
-.status { font-size: 12px; color: #bbb7ce; }
-.macro-row { background: #20212b; border-radius: 8px; padding: 10px 14px; }
-scrolledwindow { background: transparent; }
-tooltip { background: #30303d; color: white; }
+@define-color accent #ffffff;
 
-window.frosted { background: rgba(16,17,22,0.76); }
-window.frosted headerbar { background: rgba(16,17,22,0.6); }
-window.frosted .sidebar, window.frosted .statusbar { background: rgba(21,22,29,0.62); }
-window.frosted .card { background: rgba(26,27,36,0.72); }
-window.frosted .keyboard-card { background: linear-gradient(140deg, rgba(32,29,46,0.76), rgba(22,24,31,0.68) 65%); }
+window {
+    background: #000000;
+    color: #ffffff;
+}
+
+headerbar {
+    background: #000000;
+    box-shadow: none;
+    border-bottom: 1px solid #1a1a1a;
+    min-height: 40px;
+    padding: 0 8px;
+}
+
+headerbar .eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #888888;
+}
+
+/* Reset headerbar window control buttons to prevent global button styles from bloating them */
+headerbar button,
+headerbar windowcontrols button,
+headerbar .titlebutton {
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    padding: 4px;
+    margin: 4px 2px;
+    min-width: 28px;
+    min-height: 28px;
+    color: #888888;
+    box-shadow: none;
+}
+
+headerbar button:hover,
+headerbar windowcontrols button:hover,
+headerbar .titlebutton:hover {
+    background: #222222;
+    border: none;
+    color: #ffffff;
+}
+
+headerbar button:checked {
+    background: #1c1c1c;
+    color: #ffffff;
+}
+
+headerbar windowcontrols button.close:hover,
+headerbar button.close:hover {
+    background: #d32f2f;
+    color: #ffffff;
+}
+
+headerbar windowcontrols button:active,
+headerbar button:active {
+    background: #333333;
+}
+
+headerbar windowcontrols {
+    border-spacing: 4px;
+}
+
+headerbar windowhandle {
+    background: transparent;
+}
+
+.sidebar {
+    background: #080808;
+    border-right: 1px solid #1a1a1a;
+    padding: 26px 16px;
+}
+
+.brand {
+    font-size: 23px;
+    font-weight: 800;
+    letter-spacing: 4px;
+    color: #ffffff;
+}
+
+.eyebrow {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #888888;
+}
+
+.muted {
+    color: #888888;
+}
+
+.subtle {
+    color: #555555;
+    font-size: 11px;
+}
+
+.page-title {
+    font-size: 31px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    color: #ffffff;
+}
+
+.section-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.nav {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    color: #888888;
+    padding: 13px 17px;
+    border-radius: 10px;
+}
+
+.nav:checked {
+    color: #ffffff;
+    background: #202020;
+}
+
+.nav:hover {
+    background: #141414;
+    color: #ffffff;
+}
+
+.card {
+    background: #0d0d0d;
+    border: 1px solid #1f1f1f;
+    border-radius: 16px;
+    padding: 23px;
+}
+
+.keyboard-card {
+    background: #000000;
+    border: 1px solid #222222;
+    border-radius: 19px;
+    padding: 24px;
+}
+
+.pill {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    background: #1a1a1a;
+    color: #ffffff;
+    border-radius: 20px;
+    padding: 7px 12px;
+}
+
+.connected {
+    color: #ffffff;
+    background: #1a2e22;
+    border: 1px solid #2e4d3a;
+}
+
+button {
+    border-radius: 9px;
+    border: 1px solid #2a2a2a;
+    background: #151515;
+    color: #ffffff;
+    padding: 9px 15px;
+    box-shadow: none;
+}
+
+button:hover {
+    background: #242424;
+    border-color: #444444;
+}
+
+button.primary {
+    background: #ffffff;
+    color: #000000;
+    border: none;
+    font-weight: 750;
+    padding: 12px 21px;
+}
+
+button.primary:hover {
+    background: #e0e0e0;
+}
+
+button:disabled {
+    opacity: 0.4;
+}
+
+scale:disabled, dropdown:disabled, switch:disabled {
+    opacity: 0.45;
+}
+
+button.swatch {
+    padding: 0;
+    min-width: 29px;
+    min-height: 29px;
+    border-radius: 30px;
+    border: 3px solid #141414;
+}
+
+button.swatch:checked {
+    border-color: #ffffff;
+}
+
+entry, textview {
+    background: #0a0a0a;
+    border: 1px solid #222222;
+    border-radius: 8px;
+    padding: 9px;
+    color: #ffffff;
+}
+
+textview text {
+    background: #0a0a0a;
+    color: #ffffff;
+}
+
+dropdown button {
+    background: #151515;
+    border: 1px solid #2a2a2a;
+    color: #ffffff;
+}
+
+scale trough {
+    min-height: 5px;
+    background: #222222;
+    border-radius: 4px;
+}
+
+scale highlight {
+    background: #ffffff;
+    border-radius: 4px;
+}
+
+scale slider {
+    margin: 0;
+    padding: 0;
+    background: #ffffff;
+    min-width: 15px;
+    min-height: 15px;
+    border: none;
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.15);
+}
+
+switch {
+    min-width: 44px;
+    min-height: 24px;
+    border-radius: 12px;
+    border: 1px solid #333333;
+    background: #181818;
+    padding: 2px;
+    box-shadow: none;
+}
+
+switch:checked {
+    background: #ffffff;
+    border-color: #ffffff;
+}
+
+switch slider {
+    min-width: 20px;
+    min-height: 20px;
+    border-radius: 10px;
+    background: #888888;
+    border: none;
+    box-shadow: none;
+    margin: 0;
+}
+
+switch:checked slider {
+    background: #000000;
+}
+
+separator {
+    background: #1c1c1c;
+}
+
+.statusbar {
+    background: #080808;
+    border-top: 1px solid #1a1a1a;
+    padding: 12px 22px;
+}
+
+.status {
+    font-size: 12px;
+    color: #888888;
+}
+
+.macro-row {
+    background: #111111;
+    border: 1px solid #1c1c1c;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 4px;
+}
+
+.macro-row:hover {
+    background: #161616;
+    border-color: #2b2b2b;
+}
+
+.macro-badge {
+    background: #202020;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 6px;
+    padding: 3px 8px;
+}
+
+.macro-keys {
+    font-size: 11px;
+    color: #888888;
+}
+
+.recording-banner {
+    background: #220000;
+    border: 1px solid #661111;
+    border-radius: 8px;
+    padding: 8px 14px;
+    color: #ff9999;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+button.danger {
+    background: #200d0d;
+    border: 1px solid #4a1919;
+    color: #ff8888;
+}
+
+button.danger:hover {
+    background: #8b1e1e;
+    color: #ffffff;
+    border-color: #aa2222;
+}
+
+button.action-small {
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 6px;
+}
+
+scrolledwindow {
+    background: transparent;
+}
+
+tooltip {
+    background: #1a1a1a;
+    color: #ffffff;
+    border: 1px solid #333333;
+}
+
+window.frosted {
+    background: rgba(0, 0, 0, 0.82);
+}
+
+window.frosted headerbar {
+    background: rgba(0, 0, 0, 0.7);
+}
+
+window.frosted .sidebar, window.frosted .statusbar {
+    background: rgba(8, 8, 8, 0.7);
+}
+
+window.frosted .card {
+    background: rgba(14, 14, 14, 0.8);
+}
+
+window.frosted .keyboard-card {
+    background: #000000;
+}

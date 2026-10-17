@@ -1,8 +1,6 @@
 window-rule {
     match app-id=r#"^io\.github\.phantom\.Studio$"#
-    open-floating true
-    default-column-width { fixed 1100; }
-    default-window-height { fixed 780; }
+    default-column-width { fixed 1024; }
     draw-border-with-background false
     background-effect {
         blur true

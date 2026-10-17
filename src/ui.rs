@@ -2,6 +2,7 @@ use crate::{
     device::{Keyboard, Snapshot},
     model::{self, Library, Macro, MacroEvent, Profile},
 };
+use anyhow::Context;
 use gtk::{Orientation, cairo, gdk, glib, prelude::*};
 use std::{cell::RefCell, rc::Rc, sync::mpsc, time::Duration};
 
@@ -57,12 +58,7 @@ fn button(text: &str, primary: bool) -> gtk::Button {
     }
     b
 }
-fn heading(title: &str, sub: &str) -> gtk::Box {
-    let b = column(8);
-    b.append(&label(title, "page-title"));
-    b.append(&label(sub, "muted"));
-    b
-}
+
 fn current(s: &Shared) -> Profile {
     let s = s.borrow();
     s.library.profiles[s.library.selected].clone()
@@ -119,6 +115,7 @@ pub fn run() -> glib::ExitCode {
 }
 
 fn build(app: &gtk::Application) {
+    app.set_accels_for_action("window.show-menu", &[]);
     let css = gtk::CssProvider::new();
     css.load_from_string(include_str!("style.css"));
     gtk::style_context_add_provider_for_display(
@@ -129,7 +126,7 @@ fn build(app: &gtk::Application) {
     gtk::Settings::default()
         .unwrap()
         .set_gtk_application_prefer_dark_theme(true);
-    let (library, load_error) = match Library::load() {
+    let (library, _load_error) = match Library::load() {
         Ok(l) => (l, None),
         Err(e) => (
             Library::default(),
@@ -185,8 +182,8 @@ fn build(app: &gtk::Application) {
     let window = gtk::ApplicationWindow::builder()
         .application(app)
         .title("Phantom Studio")
-        .default_width(1100)
-        .default_height(780)
+        .default_width(1024)
+        .default_height(640)
         .build();
     let frosted = std::fs::read(model::config_dir().join("appearance.json"))
         .ok()
@@ -201,33 +198,65 @@ fn build(app: &gtk::Application) {
         window.add_css_class("frosted");
     }
     let header = gtk::HeaderBar::new();
-    header.set_title_widget(Some(&label("PHANTOM STUDIO", "eyebrow")));
+    header.set_show_title_buttons(true);
+
+    let toggle_sidebar = gtk::ToggleButton::new();
+    toggle_sidebar.add_css_class("flat");
+    toggle_sidebar.set_icon_name("sidebar-show-symbolic");
+    toggle_sidebar.set_tooltip_text(Some("Toggle sidebar (Ctrl+B)"));
+    toggle_sidebar.set_active(true);
+    header.pack_start(&toggle_sidebar);
+
+    let title = label("PHANTOM STUDIO", "eyebrow");
+    title.set_valign(gtk::Align::Center);
+    header.set_title_widget(Some(&title));
     window.set_titlebar(Some(&header));
+
+    let status = label("", "");
+
     let root = column(0);
     let body = row(0);
     body.set_vexpand(true);
+
     let sidebar = column(10);
     sidebar.add_css_class("sidebar");
-    sidebar.set_width_request(178);
-    sidebar.append(&label("PHANTOM", "brand"));
-    sidebar.append(&label("KEYBOARD STUDIO", "eyebrow"));
+    sidebar.set_width_request(184);
+
+    let brand_row = row(6);
+    let brand_box = column(2);
+    brand_box.append(&label("PHANTOM", "brand"));
+    brand_box.append(&label("KEYBOARD STUDIO", "eyebrow"));
+    brand_box.set_hexpand(true);
+    brand_row.append(&brand_box);
+
+    let collapse_btn = gtk::Button::builder()
+        .icon_name("pan-start-symbolic")
+        .tooltip_text("Collapse sidebar")
+        .build();
+    collapse_btn.add_css_class("flat");
+    {
+        let toggle = toggle_sidebar.clone();
+        collapse_btn.connect_clicked(move |_| {
+            toggle.set_active(false);
+        });
+    }
+    brand_row.append(&collapse_btn);
+    sidebar.append(&brand_row);
+
     let gap = column(0);
-    gap.set_height_request(26);
+    gap.set_height_request(20);
     sidebar.append(&gap);
+
     let stack = gtk::Stack::new();
     stack.set_transition_type(gtk::StackTransitionType::Crossfade);
     stack.set_transition_duration(160);
     stack.set_hexpand(true);
     stack.set_vexpand(true);
-    let status = label(
-        load_error
-            .as_deref()
-            .unwrap_or("Ready. Connect your keyboard to get started."),
-        "status",
-    );
-    status.set_ellipsize(gtk::pango::EllipsizeMode::End);
-    status.set_hexpand(true);
-    let badge = label("NOT CONNECTED", "pill");
+
+    let badge = label("DISCONNECTED", "pill");
+    badge.set_halign(gtk::Align::Start);
+    let dev_name = label("No keyboard", "section-title");
+    let dev_keys = label("0 keys", "muted");
     let keyboard = keyboard_view(&state, false);
     let mut first: Option<gtk::ToggleButton> = None;
     for (name, title, icon) in [
@@ -260,17 +289,34 @@ fn build(app: &gtk::Application) {
     let spacer = column(0);
     spacer.set_vexpand(true);
     sidebar.append(&spacer);
-    sidebar.append(&label("YOUR DEVICE", "eyebrow"));
-    sidebar.append(&label("Phantom TKL", "section-title"));
-    sidebar.append(&label("87 keys  ·  RGB", "muted"));
+
+    sidebar.append(&label("DETECTED KEYBOARD", "eyebrow"));
+    sidebar.append(&dev_name);
+    sidebar.append(&dev_keys);
     sidebar.append(&badge);
-    let refresh = button("Reconnect", false);
+
     {
-        let (s, tx, st) = (state.clone(), job_tx.clone(), status.clone());
-        refresh.connect_clicked(move |_| start_job(&s, &tx, &st, Job::Probe));
+        let sidebar = sidebar.clone();
+        toggle_sidebar.connect_toggled(move |btn| {
+            sidebar.set_visible(btn.is_active());
+        });
     }
-    sidebar.append(&refresh);
-    sidebar.append(&label("LINUX EDITION  /  0.1", "subtle"));
+
+    let key_ctrl = gtk::EventControllerKey::new();
+    {
+        let toggle = toggle_sidebar.clone();
+        key_ctrl.connect_key_pressed(move |_, keyval, _, state| {
+            if (state.contains(gdk::ModifierType::CONTROL_MASK) && keyval == gdk::Key::b)
+                || keyval == gdk::Key::F9
+            {
+                toggle.set_active(!toggle.is_active());
+                return glib::Propagation::Stop;
+            }
+            glib::Propagation::Proceed
+        });
+    }
+    window.add_controller(key_ctrl);
+
     let lighting = lighting_page(&state, &job_tx, &status, &keyboard);
     let keymap = keymap_page(&state, &job_tx, &status);
     let macros = macros_page(&state, &status, &window);
@@ -283,10 +329,10 @@ fn build(app: &gtk::Application) {
         ("profiles", profiles),
         ("device", device),
     ] {
-        page.set_margin_top(28);
-        page.set_margin_bottom(28);
-        page.set_margin_start(32);
-        page.set_margin_end(32);
+        page.set_margin_top(16);
+        page.set_margin_bottom(16);
+        page.set_margin_start(20);
+        page.set_margin_end(20);
         let scroll = gtk::ScrolledWindow::builder()
             .hscrollbar_policy(gtk::PolicyType::Never)
             .child(&page)
@@ -296,17 +342,14 @@ fn build(app: &gtk::Application) {
     body.append(&sidebar);
     body.append(&stack);
     root.append(&body);
-    let footer = row(12);
-    footer.add_css_class("statusbar");
-    footer.append(&status);
-    footer.append(&label("GTK 4  ·  Rust", "subtle"));
-    root.append(&footer);
     window.set_child(Some(&root));
     {
-        let (s, st, badge, k) = (
+        let (s, st, badge, dev_name, dev_keys, k) = (
             state.clone(),
             status.clone(),
             badge.clone(),
+            dev_name.clone(),
+            dev_keys.clone(),
             keyboard.clone(),
         );
         glib::timeout_add_local(Duration::from_millis(80), move || {
@@ -315,8 +358,8 @@ fn build(app: &gtk::Application) {
                 match done.result {
                     Ok(snapshot) => {
                         if let Some(snapshot) = snapshot {
+                            let p = snapshot.profile();
                             if done.read_into_profile {
-                                let p = snapshot.profile();
                                 edit(&s, |old| {
                                     old.lighting = p.lighting;
                                     old.colors = p.colors;
@@ -326,16 +369,28 @@ fn build(app: &gtk::Application) {
                                     old.polling_rate = p.polling_rate;
                                 });
                                 s.borrow_mut().revision += 1;
+                            } else {
+                                edit(&s, |old| {
+                                    old.win_lock = p.win_lock;
+                                    old.six_key_rollover = p.six_key_rollover;
+                                    old.swap_wasd = p.swap_wasd;
+                                    old.polling_rate = p.polling_rate;
+                                });
+                                s.borrow_mut().revision += 1;
                             }
                             s.borrow_mut().snapshot = Some(snapshot);
                         }
+                        dev_name.set_text("Phantom TKL");
+                        dev_keys.set_text(&format!("{} keys", model::layout().len()));
                         badge.set_text("●  CONNECTED");
                         badge.add_css_class("connected");
                         st.set_text(done.message);
                     }
                     Err(e) => {
                         st.set_text(&e);
-                        badge.set_text("CHECK CONNECTION");
+                        dev_name.set_text("No keyboard");
+                        dev_keys.set_text("0 keys");
+                        badge.set_text("DISCONNECTED");
                         badge.remove_css_class("connected");
                     }
                 }
@@ -374,14 +429,453 @@ fn build(app: &gtk::Application) {
     }
 }
 
+fn hsv_to_rgb(h: f64, s: f64, v: f64) -> (f64, f64, f64) {
+    let h = (h.rem_euclid(1.0)) * 6.0;
+    let i = h.floor() as i32;
+    let f = h - i as f64;
+    let p = v * (1.0 - s);
+    let q = v * (1.0 - s * f);
+    let t = v * (1.0 - s * (1.0 - f));
+    match i % 6 {
+        0 => (v, t, p),
+        1 => (q, v, p),
+        2 => (p, v, t),
+        3 => (p, q, v),
+        4 => (t, p, v),
+        _ => (v, p, q),
+    }
+}
+
+fn calculate_key_color(
+    key: &model::Key,
+    p: &model::Profile,
+    elapsed: f64,
+    snapshot: Option<&crate::device::Snapshot>,
+) -> (f64, f64, f64) {
+    if p.lighting.mode == 20 {
+        let color = p.colors.get(&key.id).copied().unwrap_or_else(|| {
+            snapshot
+                .filter(|snap| snap.settings[25] == p.lighting.custom_slot)
+                .and_then(|snap| {
+                    snap.led_index(key)
+                        .and_then(|led| snap.custom_colors.get(led * 3..led * 3 + 3))
+                })
+                .map(|rgb| [rgb[0], rgb[1], rgb[2]])
+                .unwrap_or([0, 0, 0])
+        });
+        let b = p.lighting.brightness as f64 / 4.0;
+        return (
+            color[0] as f64 / 255.0 * b,
+            color[1] as f64 / 255.0 * b,
+            color[2] as f64 / 255.0 * b,
+        );
+    }
+
+    let speed_mult = match p.lighting.speed {
+        0 => 0.4,
+        1 => 0.7,
+        2 => 1.0,
+        3 => 1.5,
+        _ => 2.2,
+    };
+    let t = elapsed * speed_mult;
+    let dir = if p.lighting.direction == 0 { 1.0 } else { -1.0 };
+    let brightness = (p.lighting.brightness as f64 / 4.0).clamp(0.0, 1.0);
+    let base_rgb = (
+        p.lighting.color[0] as f64 / 255.0,
+        p.lighting.color[1] as f64 / 255.0,
+        p.lighting.color[2] as f64 / 255.0,
+    );
+
+    match p.lighting.mode {
+        1 => {
+            let phase = key.x * 0.008 * dir - t * 2.5;
+            let wave = (phase.sin() * 0.5 + 0.5).powf(1.8);
+            if p.lighting.rainbow {
+                let hue = (key.x * 0.0012 * dir - t * 0.4).rem_euclid(1.0);
+                let (r, g, b) = hsv_to_rgb(hue, 0.9, 1.0);
+                (
+                    r * wave * brightness,
+                    g * wave * brightness,
+                    b * wave * brightness,
+                )
+            } else {
+                (
+                    base_rgb.0 * wave * brightness,
+                    base_rgb.1 * wave * brightness,
+                    base_rgb.2 * wave * brightness,
+                )
+            }
+        }
+        2 => {
+            let w1 = (key.x * 0.006 * dir + key.y * 0.008 + t * 1.2).sin();
+            let w2 = (key.x * 0.004 - key.y * 0.012 - t * 0.8).cos();
+            let wave = ((w1 + w2) * 0.35 + 0.65).clamp(0.1, 1.0);
+            if p.lighting.rainbow {
+                let hue = (key.x * 0.0008 + key.y * 0.001 + t * 0.25 * dir).rem_euclid(1.0);
+                let (r, g, b) = hsv_to_rgb(hue, 0.85, 1.0);
+                (
+                    r * wave * brightness,
+                    g * wave * brightness,
+                    b * wave * brightness,
+                )
+            } else {
+                (
+                    base_rgb.0 * wave * brightness,
+                    base_rgb.1 * wave * brightness,
+                    base_rgb.2 * wave * brightness,
+                )
+            }
+        }
+        3 => {
+            let row = ((key.y - 10.0) / 45.0).clamp(0.0, 5.0) as i32;
+            let row_norm = if (row % 2 == 0) ^ (dir < 0.0) {
+                key.x / 888.0
+            } else {
+                1.0 - key.x / 888.0
+            };
+            let path_pos = row as f64 + row_norm;
+            let head = (t * 3.0).rem_euclid(6.5);
+            let dist = (path_pos - head).rem_euclid(6.5);
+            let tail_len = 1.2;
+            let intensity = if dist < tail_len {
+                (1.0 - dist / tail_len).powf(1.5)
+            } else {
+                0.05
+            };
+            if p.lighting.rainbow {
+                let hue = (path_pos * 0.15 + t * 0.2).rem_euclid(1.0);
+                let (r, g, b) = hsv_to_rgb(hue, 0.95, 1.0);
+                (
+                    r * intensity * brightness,
+                    g * intensity * brightness,
+                    b * intensity * brightness,
+                )
+            } else {
+                (
+                    base_rgb.0 * intensity * brightness,
+                    base_rgb.1 * intensity * brightness,
+                    base_rgb.2 * intensity * brightness,
+                )
+            }
+        }
+        4 => {
+            let hue = (t * 0.25).rem_euclid(1.0);
+            let (r, g, b) = hsv_to_rgb(hue, 1.0, 1.0);
+            (r * brightness, g * brightness, b * brightness)
+        }
+        5 => {
+            let cycle = t * 1.8;
+            let wave = (cycle.sin() * 0.5 + 0.5).powf(2.0);
+            let color = if p.lighting.rainbow {
+                let step = (cycle / std::f64::consts::TAU).floor();
+                let hue = (step * 0.16 + 0.1).rem_euclid(1.0);
+                hsv_to_rgb(hue, 1.0, 1.0)
+            } else {
+                base_rgb
+            };
+            (
+                color.0 * wave * brightness,
+                color.1 * wave * brightness,
+                color.2 * wave * brightness,
+            )
+        }
+        6 => (
+            base_rgb.0 * brightness,
+            base_rgb.1 * brightness,
+            base_rgb.2 * brightness,
+        ),
+        7 => {
+            let tap_interval = 0.8;
+            let cycle_idx = (t / tap_interval).floor() as u64;
+            let time_in_cycle = t % tap_interval;
+            let pseudo_key_id = ((cycle_idx.wrapping_mul(6364136223846793005) >> 32) % 87) as usize;
+            let prev_id =
+                ((cycle_idx.wrapping_sub(1).wrapping_mul(6364136223846793005) >> 32) % 87) as usize;
+            let is_hit = key.id == pseudo_key_id;
+            let is_prev = key.id == prev_id;
+            let fade = if is_hit {
+                (1.0 - time_in_cycle / tap_interval).max(0.0)
+            } else if is_prev {
+                (1.0 - (time_in_cycle + tap_interval) / (tap_interval * 2.0)).max(0.0)
+            } else {
+                0.0
+            };
+            let intensity = (0.08 + fade * 0.92).clamp(0.0, 1.0);
+            if p.lighting.rainbow {
+                let hue = (key.id as f64 * 0.08 + t * 0.2).rem_euclid(1.0);
+                let (r, g, b) = hsv_to_rgb(hue, 0.9, 1.0);
+                (
+                    r * intensity * brightness,
+                    g * intensity * brightness,
+                    b * intensity * brightness,
+                )
+            } else {
+                (
+                    base_rgb.0 * intensity * brightness,
+                    base_rgb.1 * intensity * brightness,
+                    base_rgb.2 * intensity * brightness,
+                )
+            }
+        }
+        8 => {
+            let dx = key.x + key.width / 2.0 - 444.0;
+            let dy = key.y + key.height / 2.0 - 150.0;
+            let dist = (dx * dx + dy * dy).sqrt();
+            let wave = ((dist * 0.02 - t * 4.0).sin() * 0.5 + 0.5).powf(3.0);
+            let intensity = wave.clamp(0.08, 1.0);
+            if p.lighting.rainbow {
+                let hue = (dist * 0.002 - t * 0.5).rem_euclid(1.0);
+                let (r, g, b) = hsv_to_rgb(hue, 1.0, 1.0);
+                (
+                    r * intensity * brightness,
+                    g * intensity * brightness,
+                    b * intensity * brightness,
+                )
+            } else {
+                (
+                    base_rgb.0 * intensity * brightness,
+                    base_rgb.1 * intensity * brightness,
+                    base_rgb.2 * intensity * brightness,
+                )
+            }
+        }
+        9 => {
+            let sweep_x = (t * 400.0).rem_euclid(988.0) - 50.0;
+            let dist = (key.x + key.width / 2.0 - sweep_x).abs();
+            let beam = (-dist * 0.03).exp();
+            let intensity = (beam + 0.06).clamp(0.0, 1.0);
+            if p.lighting.rainbow {
+                let hue = (key.x * 0.001 + t * 0.2).rem_euclid(1.0);
+                let (r, g, b) = hsv_to_rgb(hue, 0.9, 1.0);
+                (
+                    r * intensity * brightness,
+                    g * intensity * brightness,
+                    b * intensity * brightness,
+                )
+            } else {
+                (
+                    base_rgb.0 * intensity * brightness,
+                    base_rgb.1 * intensity * brightness,
+                    base_rgb.2 * intensity * brightness,
+                )
+            }
+        }
+        10 => {
+            let phase = ((key.id as f64 * 12.9898 + key.x * 78.233).sin() * 43758.5453).fract();
+            let speed_mult = 0.8 + 1.2 * phase;
+            let twinkle = ((t * 2.0 * speed_mult + phase * std::f64::consts::TAU).sin() * 0.5
+                + 0.5)
+                .powf(3.0);
+            let intensity = twinkle.clamp(0.05, 1.0);
+            if p.lighting.rainbow {
+                let (r, g, b) = hsv_to_rgb(phase, 0.9, 1.0);
+                (
+                    r * intensity * brightness,
+                    g * intensity * brightness,
+                    b * intensity * brightness,
+                )
+            } else {
+                (
+                    base_rgb.0 * intensity * brightness,
+                    base_rgb.1 * intensity * brightness,
+                    base_rgb.2 * intensity * brightness,
+                )
+            }
+        }
+        11 => {
+            let dx = key.x + key.width / 2.0 - 444.0;
+            let dy = key.y + key.height / 2.0 - 150.0;
+            let angle = dy.atan2(dx);
+            let dist = (dx * dx + dy * dy).sqrt();
+            let petals = (angle * 4.0 + dist * 0.015 - t * 2.5).sin() * 0.5 + 0.5;
+            let hue = (angle / std::f64::consts::TAU + dist * 0.001 - t * 0.2).rem_euclid(1.0);
+            let (r, g, b) = hsv_to_rgb(hue, 1.0, 1.0);
+            let intensity = petals * 0.7 + 0.3;
+            (
+                r * intensity * brightness,
+                g * intensity * brightness,
+                b * intensity * brightness,
+            )
+        }
+        12 => {
+            let hue = (key.x / 450.0 * dir - t * 0.7).rem_euclid(1.0);
+            let (r, g, b) = hsv_to_rgb(hue, 1.0, 1.0);
+            (r * brightness, g * brightness, b * brightness)
+        }
+        13 => {
+            let hue = ((key.x + key.y * 1.6) / 520.0 - t * 0.75).rem_euclid(1.0);
+            let (r, g, b) = hsv_to_rgb(hue, 1.0, 1.0);
+            (r * brightness, g * brightness, b * brightness)
+        }
+        14 => {
+            let block = ((key.x / 140.0).floor() - (t * 2.5).floor()).rem_euclid(5.0);
+            let intensity = if block < 2.0 { 1.0 } else { 0.1 };
+            if p.lighting.rainbow {
+                let hue =
+                    ((key.x / 140.0).floor() * 0.2 + (t * 0.5).floor() * 0.15).rem_euclid(1.0);
+                let (r, g, b) = hsv_to_rgb(hue, 1.0, 1.0);
+                (
+                    r * intensity * brightness,
+                    g * intensity * brightness,
+                    b * intensity * brightness,
+                )
+            } else {
+                (
+                    base_rgb.0 * intensity * brightness,
+                    base_rgb.1 * intensity * brightness,
+                    base_rgb.2 * intensity * brightness,
+                )
+            }
+        }
+        15 => {
+            let col = (key.x / 55.0).floor();
+            let seed = ((col * 93.17).sin() * 43758.5).fract().abs();
+            let drop_y = (t * 220.0 * (0.8 + 0.4 * seed) + seed * 300.0).rem_euclid(380.0);
+            let dist_y = key.y - (drop_y - 40.0);
+            let intensity = if (0.0..120.0).contains(&dist_y) {
+                (1.0 - dist_y / 120.0).powf(1.4)
+            } else {
+                0.04
+            };
+            if p.lighting.rainbow {
+                let (r, g, b) = hsv_to_rgb(seed, 0.9, 1.0);
+                (
+                    r * intensity * brightness,
+                    g * intensity * brightness,
+                    b * intensity * brightness,
+                )
+            } else {
+                (
+                    base_rgb.0 * intensity * brightness,
+                    base_rgb.1 * intensity * brightness,
+                    base_rgb.2 * intensity * brightness,
+                )
+            }
+        }
+        16 => {
+            let dx = key.x + key.width / 2.0 - 444.0;
+            let dy = key.y + key.height / 2.0 - 150.0;
+            let angle = dy.atan2(dx).rem_euclid(std::f64::consts::TAU);
+            let sweep = (t * 3.5).rem_euclid(std::f64::consts::TAU);
+            let diff = (angle - sweep).rem_euclid(std::f64::consts::TAU);
+            let intensity = if diff < 1.2 {
+                (1.0 - diff / 1.2).powf(1.5)
+            } else {
+                0.06
+            };
+            if p.lighting.rainbow {
+                let hue = (angle / std::f64::consts::TAU).rem_euclid(1.0);
+                let (r, g, b) = hsv_to_rgb(hue, 1.0, 1.0);
+                (
+                    r * intensity * brightness,
+                    g * intensity * brightness,
+                    b * intensity * brightness,
+                )
+            } else {
+                (
+                    base_rgb.0 * intensity * brightness,
+                    base_rgb.1 * intensity * brightness,
+                    base_rgb.2 * intensity * brightness,
+                )
+            }
+        }
+        17 => {
+            let preset = p.lighting.surmount_preset;
+            let is_highlighted = match preset {
+                0 => matches!(
+                    key.label.as_str(),
+                    "W" | "A" | "S" | "D" | "↑" | "↓" | "←" | "→" | "Esc"
+                ),
+                1 => matches!(
+                    key.label.as_str(),
+                    "W" | "A" | "S" | "D" | "1" | "2" | "3" | "4" | "Shift" | "Ctrl" | "Space"
+                ),
+                2 => matches!(
+                    key.label.as_str(),
+                    "Q" | "W"
+                        | "E"
+                        | "R"
+                        | "D"
+                        | "F"
+                        | "1"
+                        | "2"
+                        | "3"
+                        | "4"
+                        | "5"
+                        | "6"
+                        | "Space"
+                        | "B"
+                ),
+                _ => matches!(
+                    key.label.as_str(),
+                    "W" | "A" | "S" | "D" | "Q" | "E" | "R" | "F" | "Shift" | "Space"
+                ),
+            };
+            if is_highlighted {
+                (1.0 * brightness, 0.2 * brightness, 0.3 * brightness)
+            } else {
+                (0.12 * brightness, 0.12 * brightness, 0.15 * brightness)
+            }
+        }
+        18 => {
+            let pulse = ((t * 4.0 * dir).sin() * 0.5 + 0.5) * 888.0;
+            let intensity =
+                if (key.x <= pulse && dir > 0.0) || (key.x >= 888.0 - pulse && dir < 0.0) {
+                    1.0
+                } else {
+                    0.08
+                };
+            let hue = (key.x / 888.0 * 0.35).rem_euclid(1.0);
+            let (r, g, b) = hsv_to_rgb(hue, 1.0, 1.0);
+            (
+                r * intensity * brightness,
+                g * intensity * brightness,
+                b * intensity * brightness,
+            )
+        }
+        _ => (
+            base_rgb.0 * brightness,
+            base_rgb.1 * brightness,
+            base_rgb.2 * brightness,
+        ),
+    }
+}
+
 fn keyboard_view(state: &Shared, select: bool) -> gtk::DrawingArea {
     let area = gtk::DrawingArea::new();
-    area.set_content_width(700);
-    area.set_content_height(285);
+    area.set_content_width(888);
+    area.set_content_height(300);
     area.set_hexpand(true);
+
+    let start_time = std::time::Instant::now();
+    let frame_time_micros = std::rc::Rc::new(std::cell::Cell::new(0i64));
+    let base_time = std::rc::Rc::new(std::cell::Cell::new(None));
+    {
+        let frame_time_micros = frame_time_micros.clone();
+        let base_time = base_time.clone();
+        area.add_tick_callback(move |area, clock| {
+            let t = clock.frame_time();
+            if t > 0 {
+                if base_time.get().is_none() {
+                    base_time.set(Some(t));
+                }
+                frame_time_micros.set(t - base_time.get().unwrap_or(0));
+            }
+            area.queue_draw();
+            glib::ControlFlow::Continue
+        });
+    }
+
     {
         let state = state.clone();
+        let frame_time_micros = frame_time_micros.clone();
         area.set_draw_func(move |_, cr, w, h| {
+            let elapsed = if frame_time_micros.get() > 0 {
+                frame_time_micros.get() as f64 / 1_000_000.0
+            } else {
+                start_time.elapsed().as_secs_f64()
+            };
             let s = state.borrow();
             let p = &s.library.profiles[s.library.selected];
             let keys = model::layout();
@@ -396,39 +890,12 @@ fn keyboard_view(state: &Shared, select: bool) -> gtk::DrawingArea {
                     && s.snapshot
                         .as_ref()
                         .is_none_or(|snap| snap.key_index(&key).is_some());
-                let color = if p.lighting.mode != 20 {
-                    p.lighting.color
-                } else {
-                    p.colors.get(&key.id).copied().unwrap_or_else(|| {
-                        s.snapshot
-                            .as_ref()
-                            .filter(|snap| snap.settings[25] == p.lighting.custom_slot)
-                            .and_then(|snap| {
-                                snap.led_index(&key)
-                                    .and_then(|led| snap.custom_colors.get(led * 3..led * 3 + 3))
-                            })
-                            .map(|rgb| [rgb[0], rgb[1], rgb[2]])
-                            .unwrap_or([0, 0, 0])
-                    })
-                };
-                let (r, g, b) = if (p.lighting.rainbow
-                    || !model::effect_controls(p.lighting.mode).color)
-                    && p.lighting.mode != 20
-                {
-                    let t = key.x / 888.0;
-                    (0.5 + 0.35 * t, 0.35 + 0.2 * (1.0 - t), 0.95 - 0.3 * t)
-                } else {
-                    (
-                        color[0] as f64 / 255.,
-                        color[1] as f64 / 255.,
-                        color[2] as f64 / 255.,
-                    )
-                };
+                let (r, g, b) = calculate_key_color(&key, p, elapsed, s.snapshot.as_ref());
                 rounded(cr, key.x, key.y, key.width, key.height, 6.0);
-                cr.set_source_rgb(0.07, 0.075, 0.105);
+                cr.set_source_rgb(0.05, 0.05, 0.05);
                 let _ = cr.fill();
                 rounded(cr, key.x, key.y, key.width, key.height - 3., 6.);
-                cr.set_source_rgb(0.15 + r * 0.07, 0.15 + g * 0.07, 0.19 + b * 0.07);
+                cr.set_source_rgb(0.12 + r * 0.07, 0.12 + g * 0.07, 0.12 + b * 0.07);
                 let _ = cr.fill_preserve();
                 cr.set_line_width(if selected { 2.5 } else { 1. });
                 cr.set_source_rgba(r, g, b, if selected { 1.0 } else { 0.4 });
@@ -438,7 +905,7 @@ fn keyboard_view(state: &Shared, select: bool) -> gtk::DrawingArea {
                 let _ = cr.fill();
                 cr.select_font_face("Sans", cairo::FontSlant::Normal, cairo::FontWeight::Normal);
                 cr.set_font_size(if key.label.len() > 5 { 10. } else { 12. });
-                cr.set_source_rgba(0.86, 0.84, 0.93, if available { 1.0 } else { 0.25 });
+                cr.set_source_rgba(0.92, 0.92, 0.92, if available { 1.0 } else { 0.25 });
                 if let Some(angle) = match key.label.as_str() {
                     "↑" => Some(-90.),
                     "↓" => Some(90.),
@@ -465,7 +932,7 @@ fn keyboard_view(state: &Shared, select: bool) -> gtk::DrawingArea {
                     let _ = cr.show_text(&key.label);
                 }
                 if p.assignments.contains_key(&key.id) {
-                    cr.set_source_rgb(0.78, 0.65, 1.);
+                    cr.set_source_rgb(1.0, 1.0, 1.0);
                     cr.arc(
                         key.x + key.width - 7.,
                         key.y + 7.,
@@ -542,12 +1009,9 @@ fn lighting_page(
 ) -> gtk::Box {
     let page = column(23);
     let top = row(10);
-    let h = heading(
-        "Make it yours.",
-        "A little atmosphere. A lot of personality.",
-    );
-    h.set_hexpand(true);
-    top.append(&h);
+    let spacer = column(0);
+    spacer.set_hexpand(true);
+    top.append(&spacer);
     let apply = button("Apply lighting  ↗", true);
     apply.set_valign(gtk::Align::Center);
     {
@@ -565,12 +1029,6 @@ fn lighting_page(
     hr.append(&label("LIGHTING PREVIEW", "pill"));
     hero.append(&hr);
     hero.append(keyboard);
-    let hint = label(
-        "Preview colors are illustrative. Apply to see the keyboard's native animation.",
-        "subtle",
-    );
-    hint.set_halign(gtk::Align::Center);
-    hero.append(&hint);
     page.append(&hero);
     let controls = row(18);
     controls.set_homogeneous(true);
@@ -994,10 +1452,6 @@ fn lighting_page(
 
 fn keymap_page(s: &Shared, tx: &mpsc::Sender<Job>, status: &gtk::Label) -> gtk::Box {
     let page = column(24);
-    page.append(&heading(
-        "Every key, your way.",
-        "Select a key and give it a new purpose.",
-    ));
     let kb = card(
         "KEY ASSIGNMENTS",
         "Dots mark keys with an assignment in this profile.",
@@ -1088,19 +1542,40 @@ fn keymap_page(s: &Shared, tx: &mpsc::Sender<Job>, status: &gtk::Label) -> gtk::
         });
     }
     editor.append(&set);
-    let macro_index = gtk::SpinButton::with_range(1., 250., 1.);
+    let macro_dropdown = gtk::DropDown::from_strings(&["No macros saved"]);
+    let refresh_macro_dropdown = {
+        let macro_dropdown = macro_dropdown.clone();
+        move |p: &Profile| {
+            let names: Vec<String> = p
+                .macros
+                .iter()
+                .enumerate()
+                .map(|(i, m)| format!("{:02} · {}", i + 1, m.name))
+                .collect();
+            let name_slices: Vec<&str> = names.iter().map(|s| s.as_str()).collect();
+            macro_dropdown.set_model(Some(&gtk::StringList::new(if name_slices.is_empty() {
+                &["No macros saved"]
+            } else {
+                &name_slices
+            })));
+            macro_dropdown.set_sensitive(!names.is_empty());
+        }
+    };
+    refresh_macro_dropdown(&current(s));
+    on_profile_change(s, &macro_dropdown, refresh_macro_dropdown);
+
     let mr = row(10);
-    mr.append(&label("Macro number", "muted"));
-    mr.append(&macro_index);
+    mr.append(&label("Macro", "muted"));
+    mr.append(&macro_dropdown);
     let assign_macro = button("Assign macro", false);
     {
-        let (s, st) = (s.clone(), status.clone());
+        let (s, st, macro_dropdown) = (s.clone(), status.clone(), macro_dropdown.clone());
         assign_macro.connect_clicked(move |_| {
             let Some(id) = s.borrow().selected else {
                 st.set_text("Select a key first.");
                 return;
             };
-            let n = macro_index.value_as_int() as usize - 1;
+            let n = macro_dropdown.selected() as usize;
             if id == 110 || n >= current(&s).macros.len() {
                 st.set_text("Choose an existing macro and a key other than Fn.");
                 return;
@@ -1138,188 +1613,181 @@ fn keymap_page(s: &Shared, tx: &mpsc::Sender<Job>, status: &gtk::Label) -> gtk::
     page
 }
 
+#[derive(Clone)]
+struct MacroEditorWidgets {
+    s: Shared,
+    status: gtk::Label,
+    name_entry: gtk::Entry,
+    text_view: gtk::TextView,
+    events: Rc<RefCell<Vec<MacroEvent>>>,
+    editing_index: Rc<RefCell<Option<usize>>>,
+    editor_title: gtk::Label,
+    save_btn: gtk::Button,
+    save_as_new_btn: gtk::Button,
+    seq_preview: gtk::Label,
+    player: Rc<RefCell<crate::playback::Player>>,
+    playback_status: gtk::Label,
+    repeats: gtk::SpinButton,
+    countdown: gtk::SpinButton,
+    list: gtk::Box,
+}
+
 fn macros_page(s: &Shared, status: &gtk::Label, window: &gtk::ApplicationWindow) -> gtk::Box {
     let player = Rc::new(RefCell::new(crate::playback::Player::default()));
-    {
-        let player = player.clone();
-        window.connect_close_request(move |_| {
-            player.borrow_mut().shutdown();
-            glib::Propagation::Proceed
-        });
-    }
-    let page = column(24);
-    page.append(&heading(
-        "One key. More possibilities.",
-        "Build precise sequences with editable timing.",
+    let bg_recorder = Rc::new(RefCell::new(
+        Option::<crate::playback::BackgroundRecorder>::None,
     ));
-    let editor = card(
-        "Macro editor",
-        "One event per line: down or up, USB key usage, delay in milliseconds. Example: down 4 0, then up 4 100.",
-    );
-    let name = gtk::Entry::builder()
-        .placeholder_text("Macro name")
-        .text("My macro")
-        .build();
-    editor.append(&name);
-    let text = gtk::TextView::new();
-    text.set_monospace(true);
-    text.set_height_request(180);
-    text.buffer().set_text("down 4 0\nup 4 100");
-    editor.append(&text);
-    let recording = Rc::new(RefCell::new(None::<std::time::Instant>));
+    let in_win_rec = Rc::new(RefCell::new(Option::<std::time::Instant>::None));
     let events = Rc::new(RefCell::new(Vec::<MacroEvent>::new()));
-    let record = button("●  Record keystrokes", false);
-    let capture = gtk::EventControllerKey::new();
-    capture.set_propagation_phase(gtk::PropagationPhase::Capture);
-    {
-        let (rec, ev, text) = (recording.clone(), events.clone(), text.clone());
-        capture.connect_key_pressed(move |_, key, _, _| {
-            let last = *rec.borrow();
-            if let Some(last) = last {
-                if let Some(usage) = gdk_usage(key) {
-                    let delay = last.elapsed().as_millis().min(65535) as u16;
-                    *rec.borrow_mut() = Some(std::time::Instant::now());
-                    if !ev
-                        .borrow()
-                        .iter()
-                        .rev()
-                        .find(|e| e.usage == usage)
-                        .is_some_and(|e| e.down)
-                    {
-                        ev.borrow_mut().push(MacroEvent {
-                            delay_ms: delay,
-                            usage,
-                            down: true,
-                        });
-                        text.buffer().set_text(&macro_text(&ev.borrow()));
-                    }
-                }
-                return glib::Propagation::Stop;
-            }
-            glib::Propagation::Proceed
-        });
-    }
-    {
-        let (rec, ev, text) = (recording.clone(), events.clone(), text.clone());
-        capture.connect_key_released(move |_, key, _, _| {
-            let last = *rec.borrow();
-            if let Some(last) = last
-                && let Some(usage) = gdk_usage(key)
-            {
-                let delay = last.elapsed().as_millis().min(65535) as u16;
-                *rec.borrow_mut() = Some(std::time::Instant::now());
-                ev.borrow_mut().push(MacroEvent {
-                    delay_ms: delay,
-                    usage,
-                    down: false,
-                });
-                text.buffer().set_text(&macro_text(&ev.borrow()));
-            }
-        });
-    }
-    window.add_controller(capture);
-    {
-        let (rec, ev, st, player) = (
-            recording.clone(),
-            events.clone(),
-            status.clone(),
-            player.clone(),
-        );
-        record.connect_clicked(move |b| {
-            if player.borrow().is_running() {
-                st.set_text("Stop playback before recording.");
-                return;
-            }
-            if rec.borrow().is_some() {
-                *rec.borrow_mut() = None;
-                b.set_label("●  Record keystrokes");
-                st.set_text("Recording stopped. Review events before saving.");
-            } else {
-                ev.borrow_mut().clear();
-                *rec.borrow_mut() = Some(std::time::Instant::now());
-                b.set_label("■  Stop recording");
-                st.set_text("Recording keys in this window. Click Stop when finished.");
-            }
-        });
-    }
-    let list = column(8);
-    refresh_macros(&list, &current(s));
-    let add = button("Save new macro", true);
-    {
-        let (s, st, text, list) = (s.clone(), status.clone(), text.clone(), list.clone());
-        add.connect_clicked(move |_| {
-            let buffer = text.buffer();
-            let input = buffer.text(&buffer.start_iter(), &buffer.end_iter(), false);
-            let result = (|| -> anyhow::Result<()> {
-                let events = parse_macro(&input)?;
-                let mac = Macro {
-                    name: name.text().to_string(),
-                    events,
-                };
-                anyhow::ensure!(!mac.name.trim().is_empty(), "Give the macro a name");
-                let mut p = current(&s);
-                p.macros.push(mac);
-                p.validate()?;
-                edit(&s, |old| *old = p);
-                s.borrow().library.save()?;
-                refresh_macros(&list, &current(&s));
-                s.borrow_mut().revision += 1;
-                Ok(())
-            })();
-            status_set(
-                &st,
-                result,
-                "Macro saved. Assign it to a key on the Key assignments page.",
-            );
-        });
-    }
-    let actions = row(10);
-    actions.append(&record);
-    actions.append(&add);
-    editor.append(&actions);
-    page.append(&editor);
-    let saved = card(
-        "Your macro library",
-        "Onboard capacity: 7168 bytes. Keystrokes are recorded only inside this window.",
+    let editing_index = Rc::new(RefCell::new(Option::<usize>::None));
+
+    let page = column(20);
+
+    // 1. TOP CARD: Macro Library
+    let lib_card = card(
+        "Saved Macros",
+        "Hardware macros stored onboard your keyboard (capacity: 7168 bytes).",
     );
-    saved.append(&list);
+    let list = column(6);
+    lib_card.append(&list);
+    page.append(&lib_card);
+
+    // 2. MIDDLE CARD: Unified Macro Editor
+    let editor_card = card(
+        "Macro Editor",
+        "Record keystrokes globally in games/apps or write events manually.",
+    );
+    let editor_title = label("CREATE NEW MACRO", "eyebrow");
+    editor_card.append(&editor_title);
+
+    let name_row = row(10);
+    let name_entry = gtk::Entry::builder()
+        .placeholder_text("Macro name (e.g. Rapid Fire, Crouch Jump)")
+        .text("My macro")
+        .hexpand(true)
+        .build();
+    let new_btn = button("+ New Macro", false);
+    name_row.append(&name_entry);
+    name_row.append(&new_btn);
+    editor_card.append(&name_row);
+
+    // Sequence preview
+    let seq_preview = label("No actions recorded yet.", "macro-keys");
+    seq_preview.set_wrap(true);
+    editor_card.append(&seq_preview);
+
+    // Recording bar
+    let rec_bar = row(12);
+    let record_btn = button("●  Record keystrokes", false);
+    record_btn.set_valign(gtk::Align::Center);
+    let bg_switch = gtk::Switch::new();
+    bg_switch.set_active(true);
+    bg_switch.set_valign(gtk::Align::Center);
+    let bg_label = label(
+        "Background recording (captures in games & background apps)",
+        "muted",
+    );
+    bg_label.set_valign(gtk::Align::Center);
+    rec_bar.append(&record_btn);
+    rec_bar.append(&bg_switch);
+    rec_bar.append(&bg_label);
+    editor_card.append(&rec_bar);
+
+    // Recording active banner
+    let rec_banner = label(
+        "● Recording active — keystrokes are being captured. Click Stop when finished.",
+        "recording-banner",
+    );
+    rec_banner.set_visible(false);
+    rec_banner.set_wrap(true);
+    editor_card.append(&rec_banner);
+
+    // Monospace text view
+    let text_view = gtk::TextView::new();
+    text_view.set_monospace(true);
+    text_view.set_height_request(150);
+    text_view.buffer().set_text("down 4 0\nup 4 100");
+    editor_card.append(&text_view);
+
+    // Text buffer live preview sync
     {
-        let w = list.clone();
-        on_profile_change(s, &list, move |p| refresh_macros(&w, p));
-    }
-    let delete = button("Delete last macro", false);
-    {
-        let (s, list, st) = (s.clone(), list.clone(), status.clone());
-        delete.connect_clicked(move |_| {
-            let mut p = current(&s);
-            if p.macros.is_empty() {
-                return;
+        let seq_preview = seq_preview.clone();
+        text_view.buffer().connect_changed(move |buf| {
+            let text = buf.text(&buf.start_iter(), &buf.end_iter(), false);
+            if let Ok(evs) = parse_macro(&text) {
+                seq_preview.set_text(&visual_sequence_summary(&evs));
             }
-            let index = p.macros.len() - 1;
-            if p.assignments
-                .values()
-                .any(|a| a[0] == 0x70 && a[1] as usize == index)
-            {
-                st.set_text("Remove the key assignment referencing this macro first.");
-                return;
-            }
-            p.macros.pop();
-            edit(&s, |old| *old = p);
-            refresh_macros(&list, &current(&s));
-            s.borrow_mut().revision += 1;
-            status_set(&st, s.borrow().library.save(), "Macro removed.");
         });
     }
-    saved.append(&delete);
-    let playback = card(
-        "Play a macro",
-        "Choose a saved macro, press Play, then focus the app that should receive the keystrokes during the countdown.",
+
+    // Save & Action buttons
+    let save_actions = row(10);
+    let save_btn = button("Save Macro", true);
+    let save_as_new_btn = button("Save as New", false);
+    save_as_new_btn.set_visible(false);
+    let clear_btn = button("Clear Editor", false);
+    save_actions.append(&save_btn);
+    save_actions.append(&save_as_new_btn);
+    save_actions.append(&clear_btn);
+    editor_card.append(&save_actions);
+    page.append(&editor_card);
+
+    // 3. BOTTOM CARD: Playback Testing
+    let playback_card = card(
+        "Playback Test",
+        "Test your macro on your desktop through a virtual keyboard before assigning it to hardware keys.",
     );
+    let play_controls = row(12);
     let choices = gtk::DropDown::from_strings(&["Save a macro first"]);
-    let refresh_choices = {
+    let repeats = gtk::SpinButton::with_range(1., 100., 1.);
+    let countdown = gtk::SpinButton::with_range(1., 10., 1.);
+    countdown.set_value(2.);
+    let play_btn = button("▶  Play Macro", true);
+    let stop_btn = button("■  Stop", false);
+
+    play_controls.append(&label("Macro", "muted"));
+    play_controls.append(&choices);
+    play_controls.append(&label("Repeats", "muted"));
+    play_controls.append(&repeats);
+    play_controls.append(&label("Countdown (s)", "muted"));
+    play_controls.append(&countdown);
+    play_controls.append(&play_btn);
+    play_controls.append(&stop_btn);
+    playback_card.append(&play_controls);
+
+    let playback_status = label("Ready. Select a macro and click Play.", "muted");
+    playback_status.set_wrap(true);
+    playback_card.append(&playback_status);
+    page.append(&playback_card);
+
+    // Context bundle for macro operations
+    let ctx = MacroEditorWidgets {
+        s: s.clone(),
+        status: status.clone(),
+        name_entry: name_entry.clone(),
+        text_view: text_view.clone(),
+        events: events.clone(),
+        editing_index: editing_index.clone(),
+        editor_title: editor_title.clone(),
+        save_btn: save_btn.clone(),
+        save_as_new_btn: save_as_new_btn.clone(),
+        seq_preview: seq_preview.clone(),
+        player: player.clone(),
+        playback_status: playback_status.clone(),
+        repeats: repeats.clone(),
+        countdown: countdown.clone(),
+        list: list.clone(),
+    };
+
+    refresh_macros(&ctx);
+
+    // Profile change listener
+    {
+        let ctx = ctx.clone();
         let choices = choices.clone();
-        move |p: &Profile| {
-            let selected = choices
+        on_profile_change(s, &list, move |p| {
+            refresh_macros(&ctx);
+            let sel = choices
                 .selected()
                 .min(p.macros.len().saturating_sub(1) as u32);
             let names: Vec<_> = p.macros.iter().map(|m| m.name.as_str()).collect();
@@ -1328,99 +1796,608 @@ fn macros_page(s: &Shared, status: &gtk::Label, window: &gtk::ApplicationWindow)
             } else {
                 &names
             })));
-            choices.set_selected(selected);
+            choices.set_selected(sel);
             choices.set_sensitive(!names.is_empty());
-        }
-    };
-    refresh_choices(&current(s));
-    on_profile_change(s, &choices, refresh_choices);
-    playback.append(&choices);
-    let timing = row(12);
-    let repeats = gtk::SpinButton::with_range(1., 100., 1.);
-    let countdown = gtk::SpinButton::with_range(1., 10., 1.);
-    countdown.set_value(3.);
-    timing.append(&label("Repeat", "muted"));
-    timing.append(&repeats);
-    timing.append(&label("Start delay (seconds)", "muted"));
-    timing.append(&countdown);
-    playback.append(&timing);
-    let playback_status = label(
-        "Ready. Playback works on Wayland and X11 through a virtual keyboard.",
-        "muted",
-    );
-    playback_status.set_wrap(true);
-    playback.append(&playback_status);
-    let actions = row(10);
-    let play = button("Play selected macro", true);
-    let stop = button("Stop playback", false);
+        });
+    }
+
+    // New macro button
     {
-        let player = player.clone();
-        stop.connect_clicked(move |_| player.borrow().stop());
+        let ctx = ctx.clone();
+        new_btn.connect_clicked(move |_| {
+            reset_macro_editor(&ctx);
+            ctx.status.set_text("Switched to new macro mode.");
+        });
+    }
+
+    // Clear editor button
+    {
+        let ctx = ctx.clone();
+        clear_btn.connect_clicked(move |_| {
+            ctx.text_view.buffer().set_text("");
+            ctx.events.borrow_mut().clear();
+            ctx.seq_preview.set_text("Editor cleared.");
+        });
+    }
+
+    // Save macro handler
+    let save_logic = {
+        let ctx = ctx.clone();
+        let choices = choices.clone();
+        Rc::new(move |force_new: bool| {
+            let buffer = ctx.text_view.buffer();
+            let input = buffer.text(&buffer.start_iter(), &buffer.end_iter(), false);
+            let result = (|| -> anyhow::Result<String> {
+                let events = parse_macro(&input)?;
+                anyhow::ensure!(
+                    !events.is_empty(),
+                    "Macro sequence has no valid key actions"
+                );
+                let mut p = current(&ctx.s);
+                let cur_edit = if force_new {
+                    None
+                } else {
+                    *ctx.editing_index.borrow()
+                };
+                let raw_name = ctx.name_entry.text().to_string();
+                let safe_name = deduplicate_macro_name(&p.macros, &raw_name, cur_edit);
+
+                let mac = Macro {
+                    name: safe_name.clone(),
+                    events,
+                };
+
+                if let Some(idx) = cur_edit {
+                    if idx < p.macros.len() {
+                        p.macros[idx] = mac;
+                    } else {
+                        p.macros.push(mac);
+                        *ctx.editing_index.borrow_mut() = None;
+                    }
+                } else {
+                    p.macros.push(mac);
+                    *ctx.editing_index.borrow_mut() = Some(p.macros.len() - 1);
+                }
+
+                p.validate()?;
+                edit(&ctx.s, |old| *old = p);
+                ctx.s.borrow().library.save()?;
+                ctx.s.borrow_mut().revision += 1;
+                ctx.name_entry.set_text(&safe_name);
+                ctx.editor_title
+                    .set_text(&format!("EDITING MACRO: {safe_name}"));
+                ctx.save_btn.set_label("Update Macro");
+                ctx.save_as_new_btn.set_visible(true);
+                refresh_macros(&ctx);
+
+                // Update choices dropdown
+                let p_curr = current(&ctx.s);
+                let names: Vec<_> = p_curr.macros.iter().map(|m| m.name.as_str()).collect();
+                choices.set_model(Some(&gtk::StringList::new(&names)));
+                if let Some(idx) = *ctx.editing_index.borrow() {
+                    choices.set_selected(idx as u32);
+                }
+                choices.set_sensitive(true);
+
+                Ok(safe_name)
+            })();
+
+            match result {
+                Ok(name) => {
+                    ctx.status
+                        .set_text(&format!("Macro '{name}' saved successfully."));
+                }
+                Err(e) => {
+                    ctx.status.set_text(&format!("Save failed: {e:#}"));
+                }
+            }
+        })
+    };
+
+    {
+        let save_logic = save_logic.clone();
+        save_btn.connect_clicked(move |_| save_logic(false));
     }
     {
-        let (s, player, st, recording) = (
-            s.clone(),
-            player.clone(),
-            playback_status.clone(),
-            recording.clone(),
+        let save_logic = save_logic.clone();
+        save_as_new_btn.connect_clicked(move |_| save_logic(true));
+    }
+
+    // In-window key capture controller (fallback or explicit in-window mode)
+    let capture = gtk::EventControllerKey::new();
+    capture.set_propagation_phase(gtk::PropagationPhase::Capture);
+    {
+        let (in_win_rec, events, text_view, seq_preview) = (
+            in_win_rec.clone(),
+            events.clone(),
+            text_view.clone(),
+            seq_preview.clone(),
         );
-        play.connect_clicked(move |_| {
-            if recording.borrow().is_some() {
-                st.set_text("Stop recording before playback.");
+        capture.connect_key_pressed(move |_, key, _, _| {
+            let last = *in_win_rec.borrow();
+            if let Some(last) = last {
+                if let Some(usage) = gdk_usage(key) {
+                    let delay = last.elapsed().as_millis().min(65535) as u16;
+                    *in_win_rec.borrow_mut() = Some(std::time::Instant::now());
+                    if !events
+                        .borrow()
+                        .iter()
+                        .rev()
+                        .find(|e| e.usage == usage)
+                        .is_some_and(|e| e.down)
+                    {
+                        events.borrow_mut().push(MacroEvent {
+                            delay_ms: delay,
+                            usage,
+                            down: true,
+                        });
+                        text_view.buffer().set_text(&macro_text(&events.borrow()));
+                        seq_preview.set_text(&visual_sequence_summary(&events.borrow()));
+                    }
+                }
+                return glib::Propagation::Stop;
+            }
+            glib::Propagation::Proceed
+        });
+    }
+    {
+        let (in_win_rec, events, text_view, seq_preview) = (
+            in_win_rec.clone(),
+            events.clone(),
+            text_view.clone(),
+            seq_preview.clone(),
+        );
+        capture.connect_key_released(move |_, key, _, _| {
+            let last = *in_win_rec.borrow();
+            if let Some(last) = last
+                && let Some(usage) = gdk_usage(key)
+            {
+                let delay = last.elapsed().as_millis().min(65535) as u16;
+                *in_win_rec.borrow_mut() = Some(std::time::Instant::now());
+                events.borrow_mut().push(MacroEvent {
+                    delay_ms: delay,
+                    usage,
+                    down: false,
+                });
+                text_view.buffer().set_text(&macro_text(&events.borrow()));
+                seq_preview.set_text(&visual_sequence_summary(&events.borrow()));
+            }
+        });
+    }
+
+    // Record button handler
+    {
+        let (
+            bg_recorder,
+            in_win_rec,
+            events,
+            player,
+            window,
+            capture,
+            record_btn,
+            rec_banner,
+            bg_switch,
+            text_view,
+            seq_preview,
+            status,
+        ) = (
+            bg_recorder.clone(),
+            in_win_rec.clone(),
+            events.clone(),
+            player.clone(),
+            window.clone(),
+            capture.clone(),
+            record_btn.clone(),
+            rec_banner.clone(),
+            bg_switch.clone(),
+            text_view.clone(),
+            seq_preview.clone(),
+            status.clone(),
+        );
+        record_btn.connect_clicked(move |b| {
+            if player.borrow().is_running() {
+                status.set_text("Stop playback before recording.");
                 return;
             }
-            let Some(mac) = current(&s).macros.get(choices.selected() as usize).cloned() else {
-                st.set_text("Save a macro first, then select it here.");
-                return;
-            };
-            match player.borrow_mut().start(
-                mac,
-                repeats.value_as_int() as u32,
-                countdown.value_as_int() as u32,
-            ) {
-                Err(e) => st.set_text(&format!("{e:#}")),
-                Ok(rx) => {
-                    st.set_text("Preparing playback…");
-                    let st = st.clone();
-                    glib::timeout_add_local(Duration::from_millis(40), move || {
-                        loop {
-                            match rx.try_recv() {
-                                Ok(crate::playback::Progress::Countdown(n)) => {
-                                    st.set_text(&format!(
-                                        "Starting in {n} seconds. Focus the destination app now."
-                                    ))
+
+            let is_recording = bg_recorder.borrow().is_some() || in_win_rec.borrow().is_some();
+
+            if is_recording {
+                // Stop recording
+                if let Some(mut rec) = bg_recorder.borrow_mut().take() {
+                    rec.stop();
+                }
+                if in_win_rec.borrow().is_some() {
+                    window.remove_controller(&capture);
+                    *in_win_rec.borrow_mut() = None;
+                }
+
+                // Sanitize recorded sequence so no unclosed keys remain
+                let fixed = model::sanitize_events(&events.borrow());
+                *events.borrow_mut() = fixed;
+                text_view.buffer().set_text(&macro_text(&events.borrow()));
+                seq_preview.set_text(&visual_sequence_summary(&events.borrow()));
+
+                b.set_label("●  Record keystrokes");
+                b.remove_css_class("danger");
+                rec_banner.set_visible(false);
+                status.set_text(&format!(
+                    "Recording stopped. {} actions captured. Review or save.",
+                    events.borrow().len()
+                ));
+            } else {
+                // Start recording
+                events.borrow_mut().clear();
+                text_view.buffer().set_text("");
+                seq_preview.set_text("Recording in progress…");
+
+                if bg_switch.is_active() {
+                    match crate::playback::BackgroundRecorder::start() {
+                        Ok((rx, rec)) => {
+                            *bg_recorder.borrow_mut() = Some(rec);
+                            b.set_label("■  Stop recording");
+                            b.add_css_class("danger");
+                            rec_banner.set_text("● Background recording active (global) — switch to any game or app and type.");
+                            rec_banner.set_visible(true);
+                            status.set_text("Recording system-wide keystrokes.");
+
+                            let bg_recorder = bg_recorder.clone();
+                            let events = events.clone();
+                            let text_view = text_view.clone();
+                            let seq_preview = seq_preview.clone();
+                            let rec_banner = rec_banner.clone();
+                            glib::timeout_add_local(Duration::from_millis(30), move || {
+                                while let Ok(ev) = rx.try_recv() {
+                                    events.borrow_mut().push(ev);
+                                    text_view.buffer().set_text(&macro_text(&events.borrow()));
+                                    seq_preview.set_text(&visual_sequence_summary(&events.borrow()));
+                                    rec_banner.set_text(&format!(
+                                        "● Recording active (global) — {} actions captured. Click Stop when done.",
+                                        events.borrow().len()
+                                    ));
                                 }
-                                Ok(crate::playback::Progress::Playing(n, total)) => {
-                                    st.set_text(&format!("Playing repeat {n} of {total}…"))
+                                if bg_recorder.borrow().is_none() {
+                                    glib::ControlFlow::Break
+                                } else {
+                                    glib::ControlFlow::Continue
                                 }
-                                Ok(crate::playback::Progress::Finished(result)) => {
-                                    st.set_text(&match result {
-                                        Ok(true) => "Playback finished.".into(),
-                                        Ok(false) => "Playback stopped. Held keys released.".into(),
-                                        Err(e) => e,
-                                    });
-                                    return glib::ControlFlow::Break;
-                                }
-                                Err(mpsc::TryRecvError::Empty) => {
-                                    return glib::ControlFlow::Continue;
-                                }
-                                Err(mpsc::TryRecvError::Disconnected) => {
-                                    return glib::ControlFlow::Break;
-                                }
-                            }
+                            });
                         }
-                    });
+                        Err(e) => {
+                            // Fallback to in-window capture if evdev access fails
+                            *in_win_rec.borrow_mut() = Some(std::time::Instant::now());
+                            window.add_controller(capture.clone());
+                            b.set_label("■  Stop recording");
+                            b.add_css_class("danger");
+                            rec_banner.set_text(&format!(
+                                "● Recording in this window only ({e}). Click Stop when done."
+                            ));
+                            rec_banner.set_visible(true);
+                            status.set_text("Recording in this window only.");
+                        }
+                    }
+                } else {
+                    *in_win_rec.borrow_mut() = Some(std::time::Instant::now());
+                    window.add_controller(capture.clone());
+                    b.set_label("■  Stop recording");
+                    b.add_css_class("danger");
+                    rec_banner.set_text("● Recording keys in this window. Click Stop when finished.");
+                    rec_banner.set_visible(true);
+                    status.set_text("Recording keys in this window.");
                 }
             }
         });
     }
-    actions.append(&play);
-    actions.append(&stop);
-    playback.append(&actions);
-    page.append(&playback);
-    page.append(&saved);
+
+    // Window close cleanup
+    {
+        let (player, window, capture, in_win_rec, bg_recorder) = (
+            player.clone(),
+            window.clone(),
+            capture.clone(),
+            in_win_rec.clone(),
+            bg_recorder.clone(),
+        );
+        let w = window.clone();
+        window.connect_close_request(move |_| {
+            if let Some(mut r) = bg_recorder.borrow_mut().take() {
+                r.stop();
+            }
+            if in_win_rec.borrow().is_some() {
+                w.remove_controller(&capture);
+            }
+            player.borrow_mut().shutdown();
+            glib::Propagation::Proceed
+        });
+    }
+
+    // Playback card play button
+    {
+        let (s, player, pb_st, repeats, countdown, choices, bg_recorder, in_win_rec) = (
+            s.clone(),
+            player.clone(),
+            playback_status.clone(),
+            repeats.clone(),
+            countdown.clone(),
+            choices.clone(),
+            bg_recorder.clone(),
+            in_win_rec.clone(),
+        );
+        play_btn.connect_clicked(move |_| {
+            if bg_recorder.borrow().is_some() || in_win_rec.borrow().is_some() {
+                pb_st.set_text("Stop recording before playback.");
+                return;
+            }
+            let Some(mac) = current(&s).macros.get(choices.selected() as usize).cloned() else {
+                pb_st.set_text("Save a macro first, then select it here.");
+                return;
+            };
+            play_macro_sequence(
+                &player,
+                mac,
+                repeats.value_as_int() as u32,
+                countdown.value_as_int() as u32,
+                &pb_st,
+            );
+        });
+    }
+
+    // Playback card stop button
+    {
+        let player = player.clone();
+        stop_btn.connect_clicked(move |_| player.borrow().stop());
+    }
+
     page
 }
+
+fn play_macro_sequence(
+    player: &Rc<RefCell<crate::playback::Player>>,
+    mac: Macro,
+    repeats: u32,
+    countdown: u32,
+    playback_status: &gtk::Label,
+) {
+    if player.borrow().is_running() {
+        player.borrow().stop();
+    }
+    match player.borrow_mut().start(mac, repeats, countdown) {
+        Err(e) => playback_status.set_text(&format!("{e:#}")),
+        Ok(rx) => {
+            playback_status.set_text("Preparing playback…");
+            let st = playback_status.clone();
+            glib::timeout_add_local(Duration::from_millis(40), move || {
+                loop {
+                    match rx.try_recv() {
+                        Ok(crate::playback::Progress::Countdown(n)) => {
+                            st.set_text(&format!(
+                                "Starting in {n}s — switch to your destination window now."
+                            ));
+                        }
+                        Ok(crate::playback::Progress::Playing(n, total)) => {
+                            st.set_text(&format!("Playing repeat {n} of {total}…"));
+                        }
+                        Ok(crate::playback::Progress::Finished(result)) => {
+                            st.set_text(&match result {
+                                Ok(true) => "Playback finished successfully.".into(),
+                                Ok(false) => "Playback stopped. Held keys released.".into(),
+                                Err(e) => e,
+                            });
+                            return glib::ControlFlow::Break;
+                        }
+                        Err(mpsc::TryRecvError::Empty) => {
+                            return glib::ControlFlow::Continue;
+                        }
+                        Err(mpsc::TryRecvError::Disconnected) => {
+                            return glib::ControlFlow::Break;
+                        }
+                    }
+                }
+            });
+        }
+    }
+}
+
+fn refresh_macros(ctx: &MacroEditorWidgets) {
+    while let Some(c) = ctx.list.first_child() {
+        ctx.list.remove(&c);
+    }
+    let p = current(&ctx.s);
+    if p.macros.is_empty() {
+        let empty_box = column(6);
+        empty_box.set_margin_top(12);
+        empty_box.set_margin_bottom(12);
+        let empty = label(
+            "No macros saved yet. Use the editor below to record or create your first macro.",
+            "muted",
+        );
+        empty.set_halign(gtk::Align::Center);
+        empty_box.append(&empty);
+        ctx.list.append(&empty_box);
+        return;
+    }
+
+    for (i, m) in p.macros.iter().enumerate() {
+        let r = row(12);
+        r.add_css_class("macro-row");
+
+        let badge = label(&format!("{:02}", i + 1), "macro-badge");
+        r.append(&badge);
+
+        let info = column(2);
+        info.set_hexpand(true);
+        let title_lbl = label(&m.name, "section-title");
+        let desc_lbl = label(&model::event_summary(&m.events), "macro-keys");
+        info.append(&title_lbl);
+        info.append(&desc_lbl);
+        r.append(&info);
+
+        let actions = row(6);
+        let play_btn = button("▶ Play", false);
+        play_btn.add_css_class("action-small");
+        let edit_btn = button("✎ Edit", false);
+        edit_btn.add_css_class("action-small");
+        let del_btn = button("✕ Delete", false);
+        del_btn.add_css_class("action-small");
+        del_btn.add_css_class("danger");
+
+        // Play handler
+        {
+            let player = ctx.player.clone();
+            let pb_st = ctx.playback_status.clone();
+            let mac = m.clone();
+            let rep = ctx.repeats.value_as_int() as u32;
+            let cd = ctx.countdown.value_as_int() as u32;
+            play_btn.connect_clicked(move |_| {
+                play_macro_sequence(&player, mac.clone(), rep, cd, &pb_st);
+            });
+        }
+
+        // Edit handler
+        {
+            let ctx = ctx.clone();
+            let mac = m.clone();
+            edit_btn.connect_clicked(move |_| {
+                *ctx.editing_index.borrow_mut() = Some(i);
+                ctx.name_entry.set_text(&mac.name);
+                ctx.text_view.buffer().set_text(&macro_text(&mac.events));
+                *ctx.events.borrow_mut() = mac.events.clone();
+                ctx.editor_title
+                    .set_text(&format!("EDITING MACRO: {}", mac.name));
+                ctx.save_btn.set_label("Update Macro");
+                ctx.save_as_new_btn.set_visible(true);
+                ctx.seq_preview
+                    .set_text(&visual_sequence_summary(&mac.events));
+                ctx.status
+                    .set_text(&format!("Loaded '{}' into editor.", mac.name));
+            });
+        }
+
+        // Delete handler
+        {
+            let ctx = ctx.clone();
+            let mac_name = m.name.clone();
+            del_btn.connect_clicked(move |_| {
+                let mut p = current(&ctx.s);
+                if i < p.macros.len() {
+                    p.macros.remove(i);
+                    // Remap assignments referencing macros
+                    let mut keys_to_remove = Vec::new();
+                    for (&id, assignment) in p.assignments.iter_mut() {
+                        if assignment[0] == 0x70 {
+                            let assigned = assignment[1] as usize;
+                            if assigned == i {
+                                keys_to_remove.push(id);
+                            } else if assigned > i {
+                                assignment[1] -= 1;
+                            }
+                        }
+                    }
+                    for id in keys_to_remove {
+                        p.assignments.remove(&id);
+                    }
+                    edit(&ctx.s, |old| *old = p);
+                    let _ = ctx.s.borrow().library.save();
+                    ctx.s.borrow_mut().revision += 1;
+
+                    let mut cur_edit = ctx.editing_index.borrow_mut();
+                    if *cur_edit == Some(i) {
+                        *cur_edit = None;
+                        drop(cur_edit);
+                        reset_macro_editor(&ctx);
+                    } else if let Some(ref mut idx) = *cur_edit
+                        && *idx > i
+                    {
+                        *idx -= 1;
+                    }
+                    ctx.status.set_text(&format!("Macro '{mac_name}' removed."));
+                    refresh_macros(&ctx);
+                }
+            });
+        }
+
+        actions.append(&play_btn);
+        actions.append(&edit_btn);
+        actions.append(&del_btn);
+        r.append(&actions);
+
+        ctx.list.append(&r);
+    }
+}
+
+fn reset_macro_editor(ctx: &MacroEditorWidgets) {
+    *ctx.editing_index.borrow_mut() = None;
+    ctx.name_entry.set_text("");
+    ctx.name_entry
+        .set_placeholder_text(Some("Macro name (e.g. Rapid Fire)"));
+    ctx.text_view.buffer().set_text("");
+    ctx.events.borrow_mut().clear();
+    ctx.editor_title.set_text("CREATE NEW MACRO");
+    ctx.save_btn.set_label("Save Macro");
+    ctx.save_as_new_btn.set_visible(false);
+    ctx.seq_preview.set_text("No actions recorded yet.");
+}
+
+fn deduplicate_macro_name(existing: &[Macro], name: &str, exclude_idx: Option<usize>) -> String {
+    let trimmed = name.trim();
+    let base_name = if trimmed.is_empty() {
+        "Macro".to_string()
+    } else {
+        trimmed.to_string()
+    };
+
+    let name_taken = |n: &str| {
+        existing.iter().enumerate().any(|(i, m)| {
+            if Some(i) == exclude_idx {
+                false
+            } else {
+                m.name.eq_ignore_ascii_case(n)
+            }
+        })
+    };
+
+    if !name_taken(&base_name) {
+        return base_name;
+    }
+
+    for counter in 2..=250 {
+        let candidate = format!("{base_name} ({counter})");
+        if !name_taken(&candidate) {
+            return candidate;
+        }
+    }
+
+    format!(
+        "{base_name} ({})",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0)
+    )
+}
+
+fn visual_sequence_summary(events: &[MacroEvent]) -> String {
+    if events.is_empty() {
+        return "No actions recorded yet.".into();
+    }
+    let total_ms: u32 = events.iter().map(|e| e.delay_ms as u32).sum();
+    let mut parts = Vec::new();
+    for e in events.iter().take(10) {
+        let name = model::usage_name(e.usage);
+        let arrow = if e.down { "↓" } else { "↑" };
+        parts.push(format!("{name}{arrow} ({}ms)", e.delay_ms));
+    }
+    if events.len() > 10 {
+        parts.push(format!("… +{} more", events.len() - 10));
+    }
+    format!(
+        "{} actions ({}ms) · {}",
+        events.len(),
+        total_ms,
+        parts.join(" → ")
+    )
+}
+
 fn macro_text(events: &[MacroEvent]) -> String {
     events
         .iter()
@@ -1435,45 +2412,43 @@ fn macro_text(events: &[MacroEvent]) -> String {
         .collect::<Vec<_>>()
         .join("\n")
 }
+
 fn parse_macro(text: &str) -> anyhow::Result<Vec<MacroEvent>> {
-    text.lines()
-        .filter(|l| !l.trim().is_empty())
-        .enumerate()
-        .map(|(i, line)| {
-            let p: Vec<_> = line.split_whitespace().collect();
-            anyhow::ensure!(
-                p.len() == 3 && matches!(p[0], "down" | "up"),
-                "Line {}: use down/up, usage, delay",
-                i + 1
-            );
-            Ok(MacroEvent {
-                down: p[0] == "down",
-                usage: p[1].parse()?,
-                delay_ms: p[2].parse()?,
-            })
-        })
-        .collect()
+    let mut raw_events = Vec::new();
+    for (i, line) in text.lines().filter(|l| !l.trim().is_empty()).enumerate() {
+        let p: Vec<_> = line.split_whitespace().collect();
+        anyhow::ensure!(
+            p.len() == 3 && matches!(p[0], "down" | "up"),
+            "Line {}: use 'down <key> <delay>' or 'up <key> <delay>'",
+            i + 1
+        );
+        let usage = if let Ok(u) = p[1].parse::<u8>() {
+            u
+        } else {
+            let target = p[1].to_ascii_lowercase();
+            let mut found = None;
+            for u in 4..=231 {
+                if model::usage_name(u).to_ascii_lowercase() == target {
+                    found = Some(u);
+                    break;
+                }
+            }
+            found.ok_or_else(|| anyhow::anyhow!("Line {}: unknown key '{}'", i + 1, p[1]))?
+        };
+        let delay_ms: u16 = p[2]
+            .parse()
+            .context(format!("Line {}: invalid delay", i + 1))?;
+        raw_events.push(MacroEvent {
+            down: p[0] == "down",
+            usage,
+            delay_ms,
+        });
+    }
+    let sanitized = model::sanitize_events(&raw_events);
+    anyhow::ensure!(!sanitized.is_empty(), "Macro has no valid key actions");
+    Ok(sanitized)
 }
-fn refresh_macros(list: &gtk::Box, p: &Profile) {
-    while let Some(c) = list.first_child() {
-        list.remove(&c);
-    }
-    for (i, m) in p.macros.iter().enumerate() {
-        let r = row(10);
-        r.add_css_class("macro-row");
-        let l = label(&format!("{:02}   {}", i + 1, m.name), "");
-        l.set_hexpand(true);
-        r.append(&l);
-        r.append(&label(&format!("{} events", m.events.len()), "muted"));
-        list.append(&r);
-    }
-    if p.macros.is_empty() {
-        list.append(&label(
-            "No macros yet. Create your first sequence above.",
-            "muted",
-        ));
-    }
-}
+
 fn gdk_usage(key: gdk::Key) -> Option<u8> {
     if let Some(c) = key.to_unicode() {
         let c = c.to_ascii_lowercase();
@@ -1493,6 +2468,43 @@ fn gdk_usage(key: gdk::Key) -> Option<u8> {
         gdk::Key::BackSpace => Some(0x2a),
         gdk::Key::Tab => Some(0x2b),
         gdk::Key::space => Some(0x2c),
+        gdk::Key::minus => Some(0x2d),
+        gdk::Key::equal => Some(0x2e),
+        gdk::Key::bracketleft => Some(0x2f),
+        gdk::Key::bracketright => Some(0x30),
+        gdk::Key::backslash => Some(0x31),
+        gdk::Key::semicolon => Some(0x33),
+        gdk::Key::apostrophe => Some(0x34),
+        gdk::Key::grave => Some(0x35),
+        gdk::Key::comma => Some(0x36),
+        gdk::Key::period => Some(0x37),
+        gdk::Key::slash => Some(0x38),
+        gdk::Key::Caps_Lock => Some(0x39),
+        gdk::Key::F1 => Some(0x3a),
+        gdk::Key::F2 => Some(0x3b),
+        gdk::Key::F3 => Some(0x3c),
+        gdk::Key::F4 => Some(0x3d),
+        gdk::Key::F5 => Some(0x3e),
+        gdk::Key::F6 => Some(0x3f),
+        gdk::Key::F7 => Some(0x40),
+        gdk::Key::F8 => Some(0x41),
+        gdk::Key::F9 => Some(0x42),
+        gdk::Key::F10 => Some(0x43),
+        gdk::Key::F11 => Some(0x44),
+        gdk::Key::F12 => Some(0x45),
+        gdk::Key::Print => Some(0x46),
+        gdk::Key::Scroll_Lock => Some(0x47),
+        gdk::Key::Pause => Some(0x48),
+        gdk::Key::Insert => Some(0x49),
+        gdk::Key::Home => Some(0x4a),
+        gdk::Key::Page_Up => Some(0x4b),
+        gdk::Key::Delete => Some(0x4c),
+        gdk::Key::End => Some(0x4d),
+        gdk::Key::Page_Down => Some(0x4e),
+        gdk::Key::Right => Some(0x4f),
+        gdk::Key::Left => Some(0x50),
+        gdk::Key::Down => Some(0x51),
+        gdk::Key::Up => Some(0x52),
         gdk::Key::Control_L => Some(0xe0),
         gdk::Key::Shift_L => Some(0xe1),
         gdk::Key::Alt_L => Some(0xe2),
@@ -1500,20 +2512,13 @@ fn gdk_usage(key: gdk::Key) -> Option<u8> {
         gdk::Key::Control_R => Some(0xe4),
         gdk::Key::Shift_R => Some(0xe5),
         gdk::Key::Alt_R => Some(0xe6),
-        gdk::Key::Left => Some(0x50),
-        gdk::Key::Right => Some(0x4f),
-        gdk::Key::Up => Some(0x52),
-        gdk::Key::Down => Some(0x51),
+        gdk::Key::Super_R => Some(0xe7),
         _ => None,
     }
 }
 
 fn profiles_page(s: &Shared, status: &gtk::Label, window: &gtk::ApplicationWindow) -> gtk::Box {
     let page = column(24);
-    page.append(&heading(
-        "A setup for every mood.",
-        "Keep lighting, assignments, and macros together.",
-    ));
     let c = card(
         "Profile library",
         "Profiles are stored locally. Applying settings to the keyboard is always a separate action.",
@@ -1662,10 +2667,6 @@ fn device_page(
     window: &gtk::ApplicationWindow,
 ) -> gtk::Box {
     let page = column(24);
-    page.append(&heading(
-        "Meet your Phantom.",
-        "Native USB control. No Windows runtime.",
-    ));
     let c = card("Phantom TKL", "USB 320f:505b  ·  Evision RGB Keyboard");
     let details = label("Waiting for device information…", "muted");
     details.set_wrap(true);
@@ -1743,7 +2744,19 @@ fn device_page(
         let (s, tx, st) = (s.clone(), tx.clone(), status.clone());
         apply.connect_clicked(move |_| start_job(&s, &tx, &st, Job::System(current(&s))));
     }
-    system.append(&apply);
+    let unlock_win = button("Unlock Super / Windows key", false);
+    {
+        let (s, tx, st) = (s.clone(), tx.clone(), status.clone());
+        unlock_win.connect_clicked(move |_| {
+            edit(&s, |p| p.win_lock = false);
+            s.borrow_mut().revision += 1;
+            start_job(&s, &tx, &st, Job::System(current(&s)));
+        });
+    }
+    let btn_row = row(10);
+    btn_row.append(&apply);
+    btn_row.append(&unlock_win);
+    system.append(&btn_row);
     page.append(&system);
     let appearance = card("Appearance", "Let a little of your desktop through.");
     let frost = gtk::CheckButton::with_label("Frosted background");
@@ -1771,17 +2784,9 @@ fn device_page(
     note.set_wrap(true);
     appearance.append(&note);
     page.append(&appearance);
-    let info = card(
-        "About this Linux edition",
-        "Built in Rust with GTK 4. Protocol recovered from your supplied Windows executable using GhidraMCP.",
-    );
-    let l = label(
-        "Lighting and device settings support readback verification. Keymap and macro writes are acknowledged by the device; their behavior needs physical testing. Firmware updates and vendor cloud services are not implemented.",
-        "muted",
-    );
-    l.set_wrap(true);
-    info.append(&l);
-    page.append(&info);
+    let ver = label(&format!("v{}", env!("CARGO_PKG_VERSION")), "subtle");
+    ver.set_halign(gtk::Align::Center);
+    page.append(&ver);
     page
 }
 

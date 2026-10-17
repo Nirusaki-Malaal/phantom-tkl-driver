@@ -205,6 +205,7 @@ impl Keyboard {
         settings[4] = p.lighting.direction.min(1);
         settings[5] = u8::from(p.lighting.rainbow);
         settings[6..9].copy_from_slice(&p.lighting.color);
+        settings[21] = u8::from(p.win_lock);
         settings[25] = p.lighting.custom_slot;
         if p.lighting.mode == 17 {
             settings[17] = p.lighting.surmount_preset;
