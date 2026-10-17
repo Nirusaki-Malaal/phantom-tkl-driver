@@ -40,7 +40,7 @@ Pre-built desktop bundles are available in [Releases](https://github.com/Nirusak
 - **Macros**: A saved macro library, individual editing/deletion, unique names, background recording on Linux and cancellable desktop playback.
 - **Profiles**: Save, copy, rename, import and export lighting, assignments and macros.
 - **Device Controls**: Windows/Super-key lock and unlock, WASD/arrow swap, rollover and 1000Hz USB polling-rate settings.
-- **Desktop UI**: Minimal dark slate and Material You surfaces, a collapsible sidebar, and clean, responsive layouts.
+- **Desktop UI**: Minimal dark slate, a collapsible sidebar, and clean, responsive layouts.
 
 ## AI usage disclosure
 
