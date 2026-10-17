@@ -223,6 +223,181 @@ pub fn encode_macros(macros: &[Macro]) -> Result<Vec<u8>> {
     Ok(out)
 }
 
+pub fn sanitize_events(events: &[MacroEvent]) -> Vec<MacroEvent> {
+    let mut out = Vec::with_capacity(events.len() + 4);
+    let mut held = std::collections::BTreeSet::new();
+
+    for ev in events {
+        if ev.usage == 0 {
+            continue;
+        }
+        if ev.down {
+            if held.insert(ev.usage) {
+                out.push(ev.clone());
+            }
+        } else if held.remove(&ev.usage) {
+            out.push(ev.clone());
+        }
+    }
+
+    // Auto-release any keys that remain held at the end of the sequence
+    for usage in held {
+        out.push(MacroEvent {
+            usage,
+            down: false,
+            delay_ms: 50,
+        });
+    }
+
+    out
+}
+
+pub fn usage_name(usage: u8) -> &'static str {
+    match usage {
+        4 => "A",
+        5 => "B",
+        6 => "C",
+        7 => "D",
+        8 => "E",
+        9 => "F",
+        10 => "G",
+        11 => "H",
+        12 => "I",
+        13 => "J",
+        14 => "K",
+        15 => "L",
+        16 => "M",
+        17 => "N",
+        18 => "O",
+        19 => "P",
+        20 => "Q",
+        21 => "R",
+        22 => "S",
+        23 => "T",
+        24 => "U",
+        25 => "V",
+        26 => "W",
+        27 => "X",
+        28 => "Y",
+        29 => "Z",
+        30 => "1",
+        31 => "2",
+        32 => "3",
+        33 => "4",
+        34 => "5",
+        35 => "6",
+        36 => "7",
+        37 => "8",
+        38 => "9",
+        39 => "0",
+        40 => "Enter",
+        41 => "Esc",
+        42 => "Backspace",
+        43 => "Tab",
+        44 => "Space",
+        45 => "-",
+        46 => "=",
+        47 => "[",
+        48 => "]",
+        49 => "\\",
+        50 => "\\",
+        51 => ";",
+        52 => "'",
+        53 => "`",
+        54 => ",",
+        55 => ".",
+        56 => "/",
+        57 => "CapsLock",
+        58 => "F1",
+        59 => "F2",
+        60 => "F3",
+        61 => "F4",
+        62 => "F5",
+        63 => "F6",
+        64 => "F7",
+        65 => "F8",
+        66 => "F9",
+        67 => "F10",
+        68 => "F11",
+        69 => "F12",
+        70 => "PrintScreen",
+        71 => "ScrollLock",
+        72 => "Pause",
+        73 => "Insert",
+        74 => "Home",
+        75 => "PageUp",
+        76 => "Delete",
+        77 => "End",
+        78 => "PageDown",
+        79 => "Right",
+        80 => "Left",
+        81 => "Down",
+        82 => "Up",
+        83 => "NumLock",
+        84 => "KP /",
+        85 => "KP *",
+        86 => "KP -",
+        87 => "KP +",
+        88 => "KP Enter",
+        89 => "KP 1",
+        90 => "KP 2",
+        91 => "KP 3",
+        92 => "KP 4",
+        93 => "KP 5",
+        94 => "KP 6",
+        95 => "KP 7",
+        96 => "KP 8",
+        97 => "KP 9",
+        98 => "KP 0",
+        99 => "KP .",
+        100 => "102nd",
+        101 => "Compose",
+        104 => "F13",
+        105 => "F14",
+        106 => "F15",
+        107 => "F16",
+        108 => "F17",
+        109 => "F18",
+        110 => "F19",
+        111 => "F20",
+        112 => "F21",
+        113 => "F22",
+        114 => "F23",
+        115 => "F24",
+        224 => "Ctrl",
+        225 => "Shift",
+        226 => "Alt",
+        227 => "Win",
+        228 => "Right Ctrl",
+        229 => "Right Shift",
+        230 => "Right Alt",
+        231 => "Right Win",
+        _ => "Key",
+    }
+}
+
+pub fn event_summary(events: &[MacroEvent]) -> String {
+    if events.is_empty() {
+        return "Empty macro".into();
+    }
+    let total_ms: u32 = events.iter().map(|e| e.delay_ms as u32).sum();
+    let mut pressed = Vec::new();
+    for e in events {
+        if e.down {
+            let name = usage_name(e.usage);
+            if !pressed.contains(&name) && pressed.len() < 5 {
+                pressed.push(name);
+            }
+        }
+    }
+    let keys_str = pressed.join(" + ");
+    if keys_str.is_empty() {
+        format!("{} actions · {}ms", events.len(), total_ms)
+    } else {
+        format!("{} actions · {}ms · [{}]", events.len(), total_ms, keys_str)
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Library {
     pub version: u32,
